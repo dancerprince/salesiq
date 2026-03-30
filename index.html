@@ -86,7 +86,7 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#000;padding:12px 22px;border-radius:var(--rs);font-weight:700;font-size:13px;z-index:9999;opacity:0;transform:translateY(20px);transition:.3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
 
-/* ── OCR MODAL ─────────────────────────────────────── */
+/* ── OCR MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.show{display:flex}
 .modal{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:880px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
@@ -97,7 +97,6 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .modal-body{padding:20px 22px;overflow-y:auto;flex:1}
 .modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
 
-/* Upload drop zone */
 .upload-zone{border:2px dashed var(--border);border-radius:var(--r);padding:50px 30px;text-align:center;cursor:pointer;transition:.2s;position:relative}
 .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--accent-bg)}
 .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
@@ -105,7 +104,6 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .upload-zone .uz-title{font-size:15px;font-weight:700;margin-bottom:6px}
 .upload-zone .uz-sub{font-size:12px;color:var(--muted)}
 
-/* OCR progress */
 .ocr-progress{text-align:center;padding:40px 20px}
 .ocr-progress .prog-icon{font-size:52px;display:block;margin-bottom:14px;animation:spin 1.5s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -114,7 +112,6 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .ocr-progress .prog-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--cyan));border-radius:8px;transition:width .3s}
 .ocr-progress .prog-status{font-size:12px;color:var(--muted)}
 
-/* OCR preview table */
 .ocr-preview-wrap{overflow:auto}
 .ocr-result-img{width:100%;max-height:200px;object-fit:contain;border-radius:var(--rs);border:1px solid var(--border);margin-bottom:16px}
 .ocr-stats{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
@@ -133,7 +130,6 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .badge-fuzzy{background:rgba(251,191,36,.15);color:var(--orange)}
 .badge-skip{background:rgba(248,113,113,.15);color:var(--red)}
 
-/* column map selects */
 .col-map{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--surface);border-radius:var(--rs);border:1px solid var(--border)}
 .col-map-item{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);font-weight:600}
 .col-map-item select{padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;outline:0;cursor:pointer;min-width:120px}
@@ -142,7 +138,6 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .warn-box{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:var(--rs);padding:10px 14px;font-size:12px;color:var(--orange);margin-bottom:12px}
 .info-box{background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:var(--rs);padding:10px 14px;font-size:12px;color:var(--cyan);margin-bottom:12px}
 
-/* ── Date picker in OCR modal ── */
 .ocr-date-picker{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs)}
 .ocr-date-picker label{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px}
 .ocr-date-picker input[type=date]{padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;font-weight:600;outline:0;cursor:pointer}
@@ -150,6 +145,11 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .ocr-date-picker .date-hint{font-size:11px;color:var(--muted);margin-left:auto}
 .ocr-date-new-badge{font-size:10px;background:rgba(52,211,153,.15);color:var(--green);padding:2px 8px;border-radius:8px;font-weight:700;margin-left:6px}
 .ocr-date-exist-badge{font-size:10px;background:rgba(251,191,36,.15);color:var(--orange);padding:2px 8px;border-radius:8px;font-weight:700;margin-left:6px}
+
+.ocr-raw-text{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:10px 14px;font-size:11px;color:var(--muted);max-height:120px;overflow:auto;white-space:pre-wrap;font-family:monospace;margin-bottom:12px;display:none}
+.ocr-raw-text.show{display:block}
+.ocr-toggle-raw{font-size:11px;color:var(--accent2);cursor:pointer;margin-bottom:8px;display:inline-block}
+.ocr-toggle-raw:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -196,7 +196,7 @@ tr:hover td{background:rgba(124,108,240,.04)}
 
 <div class="toast" id="toast"></div>
 
-<!-- ══════════ OCR MODAL ══════════ -->
+<!-- OCR MODAL -->
 <div class="modal-overlay" id="ocrModal">
   <div class="modal">
     <div class="modal-head">
@@ -208,14 +208,11 @@ tr:hover td{background:rgba(124,108,240,.04)}
       <!-- Step 1: Upload -->
       <div id="ocrStep1">
         <div class="info-box">📌 Upload a screenshot or photo of your agent performance table. The system will automatically extract agent names and numbers.</div>
-
-        <!-- ── DATE PICKER ── -->
         <div class="ocr-date-picker">
           <label>📅 Import to date:</label>
           <input type="date" id="ocrTargetDate" onchange="updateOcrDateHint()">
           <span id="ocrDateHint" class="date-hint"></span>
         </div>
-
         <div class="upload-zone" id="uploadZone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
           <input type="file" accept="image/*" id="imgFileInput" onchange="handleFileSelect(event)">
           <span class="uz-icon">📷</span>
@@ -236,7 +233,6 @@ tr:hover td{background:rgba(124,108,240,.04)}
       <div id="ocrStep3" style="display:none">
         <img id="ocrPreviewImg" class="ocr-result-img" src="" alt="Uploaded image">
 
-        <!-- ── DATE PICKER (also shown in step 3) ── -->
         <div class="ocr-date-picker">
           <label>📅 Target date:</label>
           <input type="date" id="ocrTargetDate3" onchange="syncOcrDates(this)">
@@ -245,6 +241,9 @@ tr:hover td{background:rgba(124,108,240,.04)}
 
         <div class="info-box" id="ocrInfoBox"></div>
         <div id="ocrWarnBox" style="display:none" class="warn-box"></div>
+
+        <span class="ocr-toggle-raw" onclick="toggleRawText()">🔍 Show raw OCR text (debug)</span>
+        <div class="ocr-raw-text" id="ocrRawText"></div>
 
         <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--muted)">🗂️ MAP COLUMNS — tell us which column contains what:</div>
         <div class="col-map" id="colMap"></div>
@@ -449,13 +448,14 @@ function delDay(date){
 }
 
 /* ═══════════════════════════════════════════
-   OCR / IMAGE IMPORT SYSTEM
+   OCR / IMAGE IMPORT SYSTEM  (v2 — robust)
 ═══════════════════════════════════════════ */
 
-let _ocrParsed=[];    // [{rawName, matchedAgent, matchQuality, chats, calls, emails, channels}]
-let _ocrHeaders=[];   // detected column headers from image
-let _ocrImageUrl='';  // preview URL
-let _lastRawRows=[];  // store raw rows for remapping
+let _ocrParsed=[];
+let _ocrHeaders=[];
+let _ocrImageUrl='';
+let _lastRawRows=[];
+let _lastRawText='';
 
 /* ── Fuzzy string match (Levenshtein ratio) ── */
 function levenshtein(a,b){
@@ -476,58 +476,191 @@ function bestAgentMatch(rawName){
   const rn=rawName.toLowerCase().trim();
   for(const ag of AGENTS){
     const agL=ag.toLowerCase();
+    // Exact match
     if(agL===rn)return {agent:ag,score:1,quality:'exact'};
+    // Substring containment
     const sc1=agL.includes(rn)||rn.includes(agL)?0.85:0;
+    // Levenshtein similarity
     const sc2=similarity(rn,agL);
+    // First-name match
     const fn1=rn.split(/[\s.]+/)[0],fn2=agL.split(/[\s.]+/)[0];
-    const sc3=fn1===fn2?0.75:0;
-    const sc=Math.max(sc1,sc2,sc3);
+    const sc3=(fn1.length>2 && fn1===fn2)?0.80:0;
+    // First name similarity
+    const sc4=(fn1.length>2)?similarity(fn1,fn2)*0.75:0;
+    const sc=Math.max(sc1,sc2,sc3,sc4);
     if(sc>bestScore){bestScore=sc;best=ag}
   }
-  if(bestScore>=0.85)return {agent:best,score:bestScore,quality:'exact'};
-  if(bestScore>=0.55)return {agent:best,score:bestScore,quality:'fuzzy'};
+  if(bestScore>=0.80)return {agent:best,score:bestScore,quality:'exact'};
+  if(bestScore>=0.50)return {agent:best,score:bestScore,quality:'fuzzy'};
   return {agent:null,score:bestScore,quality:'none'};
 }
 
-/* ── Parse OCR text into rows ── */
+/* ══════════════════════════════════════════════════════
+   ROBUST OCR TEXT PARSER  (v2)
+   Handles multiple OCR output formats from spreadsheets
+══════════════════════════════════════════════════════ */
 function parseOcrText(rawText){
-  const lines=rawText.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
+  console.log('🔍 === RAW OCR TEXT START ===');
+  console.log(rawText);
+  console.log('🔍 === RAW OCR TEXT END ===');
+  _lastRawText=rawText;
+
+  const lines=rawText.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
   const rows=[];
 
-  const headerKeywords=['agent','name','chat','email','call','meeting','channel','query'];
+  // ── STEP 1: Find header row ──
+  const headerKeywords=['agent','name','chat','email','call','meeting','channel','query','queries','response'];
   let headerIdx=-1;
-  for(let i=0;i<Math.min(lines.length,8);i++){
+  for(let i=0;i<Math.min(lines.length,15);i++){
     const l=lines[i].toLowerCase();
     const hits=headerKeywords.filter(k=>l.includes(k)).length;
     if(hits>=2){headerIdx=i;break}
   }
 
+  // ── STEP 2: Parse header columns ──
   let detectedCols=[];
   if(headerIdx>=0){
     const hLine=lines[headerIdx];
-    detectedCols=hLine.split(/\s{2,}|\t+/).map(s=>s.trim()).filter(Boolean);
+    // Try multiple splitting strategies
+    const strategies=[
+      hLine.split(/\s{2,}|\t+/).map(s=>s.trim()).filter(Boolean),
+      hLine.split('|').map(s=>s.trim()).filter(Boolean),
+      hLine.split(/\t/).map(s=>s.trim()).filter(Boolean),
+    ];
+    detectedCols=strategies.reduce((a,b)=>b.length>a.length?b:a,[]);
+    // Remove pure-number or single-char tokens from headers
+    detectedCols=detectedCols.filter(c=>!/^\d+$/.test(c) && c.length>1);
+    // Remove the "Agent name" column header itself from the column list (we only want data columns)
+    detectedCols=detectedCols.filter(c=>!/(agent|name)/i.test(c) || /(email|chat|call|channel|meet|query|response)/i.test(c));
     _ocrHeaders=detectedCols;
+    console.log('📋 Detected headers:', detectedCols);
   } else {
     _ocrHeaders=[];
+    console.log('⚠️ No header row detected');
   }
 
+  // ── STEP 3: Parse data rows with multiple strategies ──
   const startIdx=headerIdx>=0?headerIdx+1:0;
+
   for(let i=startIdx;i<lines.length;i++){
     const line=lines[i];
-    const parts=line.split(/\s{2,}|\t+/).map(s=>s.trim()).filter(Boolean);
-    if(parts.length<2)continue;
-    const firstPart=parts[0];
-    if(!/[a-zA-Z]/.test(firstPart))continue;
-    if(/^\d+$/.test(firstPart))continue;
+    if(line.length<2) continue;
 
-    const nums=[];
-    for(let j=1;j<parts.length;j++){
-      const v=parseInt(parts[j].replace(/[^0-9]/g,''));
-      if(!isNaN(v))nums.push(v);
+    // Skip lines that are purely numbers/symbols with no letters
+    if(!/[a-zA-Z]/.test(line)) continue;
+    // Skip lines that look like column headers (A B C D E)
+    if(/^[A-E](\s+[A-E])*\s*$/.test(line.trim())) continue;
+
+    let name='', nums=[];
+
+    // ─── STRATEGY A: Use regex to find name + trailing numbers ───
+    // Pattern: optional leading number, then name (letters+spaces), then numbers
+    const regexA=/^(?:\d+[\s.|)\-:]*)?([A-Za-z][A-Za-z\s.'\-]+?)\s+([\d][\d\s]*\d?)$/;
+    const matchA=line.match(regexA);
+    if(matchA){
+      name=matchA[1].trim();
+      nums=[...matchA[2].matchAll(/\d+/g)].map(m=>parseInt(m[0]));
     }
-    if(nums.length===0)continue;
-    rows.push({rawName:firstPart, nums});
+
+    // ─── STRATEGY B: Split by 2+ spaces/tabs, first alpha token is name ───
+    if(!name || nums.length===0){
+      const parts=line.split(/\s{2,}|\t+/).map(s=>s.trim()).filter(Boolean);
+      if(parts.length>=2){
+        let nameIdx=-1;
+        for(let j=0;j<parts.length;j++){
+          if(/[a-zA-Z]/.test(parts[j]) && !/^\d+$/.test(parts[j])){
+            nameIdx=j;break;
+          }
+        }
+        if(nameIdx>=0){
+          let candidateName=parts[nameIdx];
+          // Merge adjacent alpha tokens if they form a name
+          let k=nameIdx+1;
+          while(k<parts.length && /^[a-zA-Z]/.test(parts[k]) && !/^\d+$/.test(parts[k])){
+            candidateName+=' '+parts[k];
+            k++;
+          }
+          const candidateNums=[];
+          for(let j=k;j<parts.length;j++){
+            const v=parseInt(parts[j].replace(/[^0-9]/g,''));
+            if(!isNaN(v))candidateNums.push(v);
+          }
+          if(candidateNums.length>nums.length){
+            name=candidateName.replace(/^\d+[\s.)\-:]+/,'').trim();
+            nums=candidateNums;
+          }
+        }
+      }
+    }
+
+    // ─── STRATEGY C: Extract ALL numbers from line, everything before first number is name ───
+    if(!name || nums.length===0){
+      const allNumMatches=[...line.matchAll(/\b(\d+)\b/g)];
+      if(allNumMatches.length>=2){
+        const firstNumPos=allNumMatches[0].index;
+        let candidateName=line.substring(0,firstNumPos).trim();
+        // Remove leading row number
+        candidateName=candidateName.replace(/^\d+[\s.)\-:|]*\s*/,'').trim();
+        if(candidateName.length>=2 && /[a-zA-Z]/.test(candidateName)){
+          // Skip the first number if it looks like a row number (1-based index)
+          let startNum=0;
+          const firstNum=allNumMatches[0];
+          if(firstNum.index===0 || line.substring(0,firstNum.index).trim()===''){
+            startNum=1; // skip row number
+          }
+          const candidateNums=allNumMatches.slice(startNum).map(m=>parseInt(m[1]));
+          if(candidateNums.length>nums.length){
+            name=candidateName;
+            nums=candidateNums;
+          }
+        }
+      }
+    }
+
+    // ─── STRATEGY D: Handle lines like "2 Henry joel 8 10 2 2" ───
+    if(!name || nums.length===0){
+      // Match: optional_row_num name_with_spaces numbers...
+      const regexD=/^(\d+)\s+([A-Za-z][A-Za-z\s.'\-]+?)\s+(\d[\d\s]+)$/;
+      const matchD=line.match(regexD);
+      if(matchD){
+        name=matchD[2].trim();
+        nums=[...matchD[3].matchAll(/\d+/g)].map(m=>parseInt(m[0]));
+      }
+    }
+
+    // ─── STRATEGY E: Handle single-spaced lines ───
+    if(!name || nums.length===0){
+      const tokens=line.split(/\s+/);
+      // Find where numbers start from the end
+      let numStart=tokens.length;
+      for(let j=tokens.length-1;j>=0;j--){
+        if(/^\d+$/.test(tokens[j])){numStart=j;}
+        else break;
+      }
+      if(numStart<tokens.length && numStart>=1){
+        // Check if first token is a row number
+        let nameStart=0;
+        if(/^\d+$/.test(tokens[0]) && numStart>1) nameStart=1;
+        const candidateName=tokens.slice(nameStart,numStart).join(' ');
+        const candidateNums=tokens.slice(numStart).map(t=>parseInt(t)).filter(n=>!isNaN(n));
+        if(candidateName.length>=2 && /[a-zA-Z]/.test(candidateName) && candidateNums.length>=2){
+          name=candidateName;
+          nums=candidateNums;
+        }
+      }
+    }
+
+    // Final cleanup
+    if(!name || nums.length===0) continue;
+    name=name.replace(/^\d+[\s.)\-:|]*\s*/,'').trim();
+    if(name.length<2) continue;
+    if(!/[a-zA-Z]/.test(name)) continue;
+
+    console.log(`  ✅ Row: "${name}" → nums: [${nums.join(', ')}]`);
+    rows.push({rawName:name, nums});
   }
+
+  console.log(`🏁 Total parsed rows: ${rows.length}`);
   _lastRawRows=rows;
   return rows;
 }
@@ -554,6 +687,7 @@ function buildMappedData(rows, colIndices){
 function autoGuessColMap(headers){
   const map={chats:-1,calls:-1,emails:-1,channels:-1};
   if(!headers.length){
+    // Default guess: Chats, Email, Channel, Meetings/Calls
     map.chats=0; map.emails=1; map.channels=2; map.calls=3;
     return map;
   }
@@ -565,10 +699,13 @@ function autoGuessColMap(headers){
     else if(/(channel|query|queries)/.test(hl))map.channels=i;
     else if(/(meet)/.test(hl)&&map.calls===-1)map.calls=i;
   });
+  // Ensure at least chats is mapped if nothing matched
+  const anyMapped=Object.values(map).some(v=>v>=0);
+  if(!anyMapped){map.chats=0;map.emails=1;map.channels=2;map.calls=3;}
   return map;
 }
 
-/* ── OCR Date Helper ── */
+/* ── OCR Date Helpers ── */
 function updateOcrDateHint(){
   const dateVal=document.getElementById('ocrTargetDate').value;
   const hint=document.getElementById('ocrDateHint');
@@ -579,7 +716,6 @@ function updateOcrDateHint(){
   }else{
     hint.innerHTML=`<span class="ocr-date-new-badge">✨ New entry</span> ${formatDate(dateVal)}`;
   }
-  // Also sync step 3 date picker
   const d3=document.getElementById('ocrTargetDate3');
   if(d3)d3.value=dateVal;
   updateOcrDateHint3();
@@ -587,7 +723,7 @@ function updateOcrDateHint(){
 function updateOcrDateHint3(){
   const dateVal=document.getElementById('ocrTargetDate3').value;
   const hint=document.getElementById('ocrDateHint3');
-  if(!dateVal){hint.innerHTML='';return}
+  if(!dateVal||!hint){return}
   const exists=STATE.days.find(d=>d.date===dateVal);
   if(exists){
     hint.innerHTML=`<span class="ocr-date-exist-badge">⚠️ Exists — will overwrite</span> ${formatDate(dateVal)}`;
@@ -603,10 +739,15 @@ function syncOcrDates(el){
   updateOcrDateHint3();
 }
 
+/* ── Toggle raw text debug view ── */
+function toggleRawText(){
+  const el=document.getElementById('ocrRawText');
+  el.classList.toggle('show');
+}
+
 /* ── OCR Modal ── */
 function openOcrModal(){
   resetOcrModal();
-  // Default date = currently active day or today
   const defaultDate=STATE.activeDay||getTodayStr();
   document.getElementById('ocrTargetDate').value=defaultDate;
   updateOcrDateHint();
@@ -620,7 +761,7 @@ function closeOcrModal(){
 
 function resetOcrModal(){
   showOcrStep(1);
-  _ocrParsed=[];_ocrHeaders=[];_ocrImageUrl='';_lastRawRows=[];
+  _ocrParsed=[];_ocrHeaders=[];_ocrImageUrl='';_lastRawRows=[];_lastRawText='';
   document.getElementById('imgFileInput').value='';
   document.getElementById('ocrModalFoot').innerHTML=`<button class="btn btn-r" onclick="closeOcrModal()">✕ Cancel</button>`;
 }
@@ -647,9 +788,44 @@ function handleFileSelect(e){
   if(file) processImageFile(file);
 }
 
+/* ── Pre-process image for better OCR ── */
+function preprocessImage(file){
+  return new Promise((resolve)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      // Scale up small images for better OCR
+      const scale=Math.max(1, Math.min(3, 2000/Math.max(img.width,img.height)));
+      canvas.width=img.width*scale;
+      canvas.height=img.height*scale;
+      const ctx=canvas.getContext('2d');
+      // White background
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      // Increase contrast
+      const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const data=imageData.data;
+      for(let i=0;i<data.length;i+=4){
+        // Convert to grayscale
+        const gray=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
+        // Apply threshold for sharper text
+        const val=gray<140?0:255;
+        data[i]=val;data[i+1]=val;data[i+2]=val;
+      }
+      ctx.putImageData(imageData,0,0);
+      canvas.toBlob((blob)=>{
+        URL.revokeObjectURL(url);
+        resolve(blob);
+      },'image/png');
+    };
+    img.src=url;
+  });
+}
+
 /* ── Run Tesseract OCR ── */
 async function processImageFile(file){
-  // Validate date is selected
   const targetDate=document.getElementById('ocrTargetDate').value;
   if(!targetDate){
     toast('⚠️ Please select a target date first','#f87171');
@@ -666,11 +842,17 @@ async function processImageFile(file){
   };
 
   try{
-    setProgress(5,'Loading image…','Preparing Tesseract OCR engine');
+    setProgress(3,'Pre-processing image…','Enhancing for better OCR accuracy');
+
+    // Pre-process image for better OCR results
+    const processedBlob=await preprocessImage(file);
+    const processedUrl=URL.createObjectURL(processedBlob);
+
+    setProgress(5,'Loading OCR engine…','Preparing Tesseract');
     const worker=await Tesseract.createWorker('eng',1,{
       logger:m=>{
         if(m.status==='recognizing text'){
-          setProgress(20+Math.round(m.progress*70),'Reading text from image…',`${Math.round(m.progress*100)}% complete`);
+          setProgress(20+Math.round(m.progress*65),'Reading text from image…',`${Math.round(m.progress*100)}% complete`);
         } else if(m.status==='loading tesseract core'){
           setProgress(10,'Loading OCR engine…',m.status);
         } else if(m.status==='initializing tesseract'){
@@ -679,27 +861,42 @@ async function processImageFile(file){
       }
     });
 
-    setProgress(90,'Parsing extracted text…','Building data table');
-    const {data:{text}}=await worker.recognize(_ocrImageUrl);
+    setProgress(88,'Running OCR…','Almost there');
+
+    // Set PSM mode for better table recognition
+    await worker.setParameters({
+      tessedit_pageseg_mode: '6', // Assume uniform block of text
+      preserve_interword_spaces: '1',
+    });
+
+    const {data:{text}}=await worker.recognize(processedUrl);
+    URL.revokeObjectURL(processedUrl);
     await worker.terminate();
 
-    setProgress(100,'Done!','Extraction complete');
-    await new Promise(r=>setTimeout(r,400));
+    setProgress(95,'Parsing extracted text…','Building data table');
+    await new Promise(r=>setTimeout(r,300));
 
     const rawRows=parseOcrText(text);
+
     if(rawRows.length===0){
+      // Show error with more detail + offer debug view
       showOcrStep(1);
-      toast('⚠️ No table data found in image. Try a clearer screenshot.','#f87171');
+      const shortText=text.substring(0,200).replace(/\n/g,' ');
+      toast('⚠️ Could not parse table. Check console (F12) for raw OCR text.','#f87171');
+      console.warn('❌ No rows parsed. Raw OCR output:', text);
       return;
     }
+
+    setProgress(100,'Done!','Extraction complete');
+    await new Promise(r=>setTimeout(r,300));
 
     const colMap=autoGuessColMap(_ocrHeaders);
     _ocrParsed=buildMappedData(rawRows,colMap);
 
     showOcrStep(3);
-    // Sync the date picker in step 3
     document.getElementById('ocrTargetDate3').value=targetDate;
     updateOcrDateHint3();
+    document.getElementById('ocrRawText').textContent=text;
 
     renderOcrPreview(rawRows, colMap);
     document.getElementById('ocrModalFoot').innerHTML=`
@@ -708,7 +905,7 @@ async function processImageFile(file){
       <button class="btn btn-img" onclick="applyOcrData()">✅ Apply to Data Entry</button>`;
 
   }catch(err){
-    console.error(err);
+    console.error('OCR Error:',err);
     showOcrStep(1);
     toast('❌ OCR failed: '+err.message,'#f87171');
   }
@@ -737,17 +934,9 @@ function renderOcrPreview(rawRows, currentColMap){
     document.getElementById('ocrWarnBox').style.display='none';
   }
 
-  const totalChats=_ocrParsed.reduce((s,r)=>s+r.chats,0);
-  const totalEmails=_ocrParsed.reduce((s,r)=>s+r.emails,0);
-  const totalChannels=_ocrParsed.reduce((s,r)=>s+r.channels,0);
-  const totalCalls=_ocrParsed.reduce((s,r)=>s+r.calls,0);
-  document.getElementById('ocrStats').innerHTML=
-    `<div class="ocr-stat">💬 Chats <span>${totalChats}</span></div>`+
-    `<div class="ocr-stat">📧 Emails <span>${totalEmails}</span></div>`+
-    `<div class="ocr-stat">📢 Channels <span>${totalChannels}</span></div>`+
-    `<div class="ocr-stat">📞 Calls <span>${totalCalls}</span></div>`;
+  updateOcrStats();
 
-  const numColCount=rawRows.length?rawRows[0].nums.length:4;
+  const numColCount=rawRows.length?Math.max(...rawRows.map(r=>r.nums.length)):4;
   const noneOpt='<option value="-1">— Not present —</option>';
 
   const catDefs=[
@@ -770,18 +959,7 @@ function renderOcrPreview(rawRows, currentColMap){
   buildOcrTable();
 }
 
-function remapColumns(){
-  const getVal=(id)=>parseInt(document.getElementById(id)?.value??-1);
-  const colIndices={
-    chats:getVal('colmap-chats'),
-    emails:getVal('colmap-emails'),
-    channels:getVal('colmap-channels'),
-    calls:getVal('colmap-calls')
-  };
-
-  _ocrParsed=buildMappedData(_lastRawRows,colIndices);
-  buildOcrTable();
-
+function updateOcrStats(){
   const totalChats=_ocrParsed.reduce((s,r)=>s+r.chats,0);
   const totalEmails=_ocrParsed.reduce((s,r)=>s+r.emails,0);
   const totalChannels=_ocrParsed.reduce((s,r)=>s+r.channels,0);
@@ -793,16 +971,30 @@ function remapColumns(){
     `<div class="ocr-stat">📞 Calls <span>${totalCalls}</span></div>`;
 }
 
+function remapColumns(){
+  const getVal=(id)=>parseInt(document.getElementById(id)?.value??-1);
+  const colIndices={
+    chats:getVal('colmap-chats'),
+    emails:getVal('colmap-emails'),
+    channels:getVal('colmap-channels'),
+    calls:getVal('colmap-calls')
+  };
+  _ocrParsed=buildMappedData(_lastRawRows,colIndices);
+  buildOcrTable();
+  updateOcrStats();
+}
+
 function buildOcrTable(){
   const thead=document.querySelector('#ocrPreviewTbl thead');
   const tbody=document.querySelector('#ocrPreviewTbl tbody');
-  thead.innerHTML=`<tr><th>Raw Name (from image)</th><th>Matched Agent</th><th>Match</th><th>💬 Chats</th><th>📧 Emails</th><th>📢 Channels</th><th>📞 Calls</th></tr>`;
+  thead.innerHTML=`<tr><th>Raw Name (from image)</th><th>Matched Agent</th><th>Match</th><th>💬 Chats</th><th>📧 Emails</th><th>📢 Channels</th><th>📞 Calls</th><th>Raw #s</th></tr>`;
   tbody.innerHTML='';
-  _ocrParsed.forEach(r=>{
+  _ocrParsed.forEach((r,idx)=>{
     const qClass=r.matchQuality==='exact'?'match-good':r.matchQuality==='fuzzy'?'match-ok':'match-none';
     const qBadge=r.matchQuality==='exact'?'badge-exact':r.matchQuality==='fuzzy'?'badge-fuzzy':'badge-skip';
     const qLabel=r.matchQuality==='exact'?'Exact':r.matchQuality==='fuzzy'?`Fuzzy ${Math.round(r.matchScore*100)}%`:'No match';
     const agentDisplay=r.matchedAgent||`<span style="color:var(--red);opacity:.7">${r.rawName} (skipped)</span>`;
+    const rawNums=_lastRawRows[idx]?_lastRawRows[idx].nums.join(', '):'';
     tbody.innerHTML+=`<tr>
       <td style="color:var(--muted);font-style:italic">${r.rawName}</td>
       <td class="${qClass}">${agentDisplay}</td>
@@ -811,13 +1003,13 @@ function buildOcrTable(){
       <td class="num-val">${r.emails}</td>
       <td class="num-val">${r.channels}</td>
       <td class="num-val">${r.calls}</td>
+      <td style="font-size:10px;color:var(--muted)">[${rawNums}]</td>
     </tr>`;
   });
 }
 
 /* ── Apply OCR data into the selected date ── */
 function applyOcrData(){
-  // Use the date from the OCR modal date picker (step 3 takes priority)
   const targetDate=document.getElementById('ocrTargetDate3').value||document.getElementById('ocrTargetDate').value;
   if(!targetDate){
     toast('⚠️ Please select a target date','#f87171');
@@ -827,7 +1019,6 @@ function applyOcrData(){
   const toApply=_ocrParsed.filter(r=>r.matchedAgent&&r.matchQuality!=='none');
   if(!toApply.length){toast('⚠️ No valid matches to apply','#fbbf24');return}
 
-  // Find or create the day entry
   let day=STATE.days.find(d=>d.date===targetDate);
   if(!day){
     const agents={};
@@ -836,7 +1027,6 @@ function applyOcrData(){
     STATE.days.push(day);
   }
 
-  // Apply extracted data
   toApply.forEach(r=>{
     if(!day.agents[r.matchedAgent]) day.agents[r.matchedAgent]={chats:0,calls:0,emails:0,channels:0};
     day.agents[r.matchedAgent].chats=r.chats;
@@ -845,13 +1035,11 @@ function applyOcrData(){
     day.agents[r.matchedAgent].channels=r.channels;
   });
 
-  // Switch to the target date
   STATE.activeDay=targetDate;
   save();
   closeOcrModal();
   renderDataEntry();
 
-  // Highlight filled rows
   toApply.forEach(r=>{
     const idx=AGENTS.indexOf(r.matchedAgent);
     if(idx>=0){
