@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Performance Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0b0d14;--surface:#111521;--card:#181d2e;--card2:#1f2537;--border:#282e44;--text:#e4e7f1;--muted:#6e7590;--accent:#7c6cf0;--accent2:#a78bfa;--accent-bg:rgba(124,108,240,.1);--cyan:#22d3ee;--green:#34d399;--orange:#fbbf24;--red:#f87171;--pink:#f472b6;--blue:#60a5fa;--gold:#ffd700;--silver:#c0c0c0;--bronze:#cd7f32;--r:12px;--rs:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* TOP NAV */
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100}
+.nav .logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px}
+.nav .logo em{font-style:normal;-webkit-text-fill-color:initial;font-size:22px}
+.tabs{display:flex;margin-left:36px;gap:2px}
+.tab{padding:8px 22px;font-size:13px;font-weight:700;color:var(--muted);background:0;border:0;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+.tab:hover{color:var(--text)}.tab.on{color:var(--accent2);border-color:var(--accent)}
+
+/* PAGE */
+.page{display:none;padding:24px 28px}.page.on{display:block}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer;border:0;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-p{background:var(--accent);color:#fff}.btn-g{background:var(--green);color:#000}.btn-r{background:var(--red);color:#fff}
+.btn-o{background:0;border:1px dashed var(--accent);color:var(--accent2)}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center}
+.kpi .num{font-size:28px;font-weight:800;margin:6px 0 2px}.kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.kpi.chats .num{color:var(--accent2)}.kpi.calls .num{color:var(--cyan)}.kpi.emails .num{color:var(--green)}.kpi.channels .num{color:var(--orange)}.kpi.total .num{color:var(--pink)}.kpi.agents .num{color:var(--blue)}
+
+/* FILTER */
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.chip{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--accent)}.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* CHARTS */
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.chart-box{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.chart-box h3{font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600}
+.chart-box canvas{max-height:260px}
+@media(max-width:900px){.charts{grid-template-columns:1fr}}
+
+/* TABLE */
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:auto;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--surface);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:10px 14px;text-align:left;position:sticky;top:0;cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:var(--text)}
+td{padding:10px 14px;border-top:1px solid var(--border);white-space:nowrap}
+tr:hover td{background:rgba(124,108,240,.04)}
+.rank-cell{font-weight:800;font-size:15px;width:44px;text-align:center}
+.medal{font-size:16px}
+.agent-cell{display:flex;align-items:center;gap:10px}
+.ava{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.bar-cell{min-width:120px}.bar-wrap{background:var(--surface);border-radius:4px;height:7px;overflow:hidden;margin-top:3px}
+.bar-fill{height:100%;border-radius:4px;transition:width .4s}
+
+/* DATA ENTRY */
+.de-layout{display:flex;gap:18px;min-height:calc(100vh - 104px)}
+.de-sidebar{width:220px;flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 104px);overflow-y:auto}
+.de-main{flex:1;overflow:auto}
+.wk-item{padding:10px 12px;border-radius:var(--rs);font-size:13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:.15s;border:1px solid transparent}
+.wk-item:hover{background:var(--card2)}.wk-item.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent2)}
+.wk-badge{font-size:10px;background:var(--surface);padding:2px 8px;border-radius:10px;color:var(--muted);font-weight:700}
+
+.add-wk{background:var(--card2);border:1px dashed var(--border);border-radius:var(--rs);padding:12px;margin-top:4px}
+.add-wk input,.add-wk select{width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;margin-bottom:6px;outline:0}
+.add-wk input:focus{border-color:var(--accent)}
+
+.de-table{width:100%;border-collapse:collapse;font-size:13px}
+.de-table th{background:var(--surface);color:var(--muted);font-size:11px;text-transform:uppercase;padding:10px 12px;text-align:left;position:sticky;top:0;z-index:5}
+.de-table td{padding:6px 8px;border-top:1px solid var(--border)}
+.de-table .agent-name{font-weight:600;min-width:160px}
+.de-table input[type=number]{width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;text-align:center;outline:0;-moz-appearance:textfield}
+.de-table input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.de-table input[type=number]:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,108,240,.15)}
+.de-table .total-cell{font-weight:800;color:var(--accent2);font-size:14px;text-align:center}
+.de-table tfoot td{background:var(--surface);font-weight:800;border-top:2px solid var(--accent)}
+.de-actions{display:flex;gap:10px;margin:14px 0;justify-content:flex-end}
+.empty-state{text-align:center;padding:80px 20px;color:var(--muted)}
+.empty-state em{font-size:48px;display:block;margin-bottom:12px;font-style:normal}
+.empty-state p{font-size:14px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#000;padding:12px 22px;border-radius:var(--rs);font-weight:700;font-size:13px;z-index:999;opacity:0;transform:translateY(20px);transition:.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="logo"><em>📊</em> Agent Tracker</div>
+  <div class="tabs">
+    <button class="tab on" onclick="showPage('dashboard')">📈 Dashboard</button>
+    <button class="tab" onclick="showPage('data')">📝 Data Entry</button>
+  </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div id="pg-dashboard" class="page on">
+  <div class="filters" id="weekFilters"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="charts">
+    <div class="chart-box"><h3>📊 Category Breakdown</h3><canvas id="chartCat"></canvas></div>
+    <div class="chart-box"><h3>🏆 Top 10 Agents</h3><canvas id="chartTop"></canvas></div>
+    <div class="chart-box"><h3>📈 Weekly Trend</h3><canvas id="chartTrend"></canvas></div>
+    <div class="chart-box"><h3>📋 Category per Agent</h3><canvas id="chartStack"></canvas></div>
+  </div>
+  <h3 style="margin-bottom:12px;font-size:15px">🏆 Agent Rankings</h3>
+  <div class="tbl-wrap"><table id="rankTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- DATA ENTRY PAGE -->
+<div id="pg-data" class="page">
+  <div class="de-layout">
+    <div class="de-sidebar">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:4px">📅 WEEKS</div>
+      <div id="weekList"></div>
+      <div class="add-wk">
+        <input id="wkNum" type="number" placeholder="Week number" min="1">
+        <input id="wkLabel" type="text" placeholder="Label (e.g. 31 Mar - 4 Apr)">
+        <button class="btn btn-o" style="width:100%;justify-content:center" onclick="addWeek()">➕ Add Week</button>
+      </div>
+    </div>
+    <div class="de-main" id="deMain">
+      <div class="empty-state"><em>📅</em><p>Add a week from the sidebar to start entering data</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════ AGENTS ═══════════ */
+const AGENTS=[
+  "Alexandra","Clara","Dalliya","Felix","Henry","Henry A",
+  "Javier","Lesly","Logapriya","Magdalena","Mani",
+  "Nancy Rodríguez Herrera","Noel Simen","Robert Steinberg",
+  "Shoaib","Tejas","Vijay","Yashvin Manoj",
+  "danushiyakeerthana.s","navaneeth.sr","prasanth.rc","santosh.ms"
+].sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
+
+const CATS=['chats','calls','emails','channels'];
+const CAT_META={
+  chats:{icon:'💬',label:'Chats',color:'#7c6cf0'},
+  calls:{icon:'📞',label:'Calls',color:'#22d3ee'},
+  emails:{icon:'📧',label:'Emails',color:'#34d399'},
+  channels:{icon:'📢',label:'Channel Queries',color:'#fbbf24'}
+};
+const AVATARS=['#6c5ce7','#00cec9','#e17055','#00b894','#fdcb6e','#fd79a8','#74b9ff','#a29bfe','#55efc4','#fab1a0','#81ecec','#636e72','#ff7675','#ffeaa7','#0984e3','#d63031'];
+function avaColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return AVATARS[Math.abs(h)%AVATARS.length]}
+function ini(n){const p=n.trim().split(/[\s.]+/);return p.length>1?(p[0][0]+p[p.length-1][0]).toUpperCase():n.substring(0,2).toUpperCase()}
+
+/* ═══════════ STATE ═══════════ */
+let STATE={weeks:[],activeWeek:null,dashFilter:'all'};
+function save(){localStorage.setItem('agt_v2',JSON.stringify(STATE))}
+function load(){try{STATE=JSON.parse(localStorage.getItem('agt_v2'))||{weeks:[],activeWeek:null,dashFilter:'all'}}catch(e){STATE={weeks:[],activeWeek:null,dashFilter:'all'}}}
+
+/* ═══════════ TOAST ═══════════ */
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+
+/* ═══════════ NAV ═══════════ */
+function showPage(p){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('on'));
+  document.getElementById('pg-'+p).classList.add('on');
+  document.querySelectorAll('.tab')[p==='dashboard'?0:1].classList.add('on');
+  if(p==='dashboard') renderDashboard();
+  else renderDataEntry();
+}
+
+/* ═══════════ DATA ENTRY ═══════════ */
+function renderDataEntry(){
+  const wl=document.getElementById('weekList');
+  wl.innerHTML='';
+  STATE.weeks.sort((a,b)=>a.num-b.num).forEach(w=>{
+    const tot=Object.values(w.agents).reduce((s,a)=>s+a.chats+a.calls+a.emails+a.channels,0);
+    const d=document.createElement('div');
+    d.className='wk-item'+(STATE.activeWeek===w.num?' on':'');
+    d.innerHTML=`<span>Week ${w.num}${w.label?' · '+w.label:''}</span><span class="wk-badge">${tot}</span>`;
+    d.onclick=()=>{STATE.activeWeek=w.num;save();renderDataEntry()};
+    wl.appendChild(d);
+  });
+  const suggest=STATE.weeks.length?Math.max(...STATE.weeks.map(w=>w.num))+1:1;
+  document.getElementById('wkNum').placeholder='Week # (next: '+suggest+')';
+
+  const main=document.getElementById('deMain');
+  const wk=STATE.weeks.find(w=>w.num===STATE.activeWeek);
+  if(!wk){main.innerHTML='<div class="empty-state"><em>📅</em><p>Add a week or select one from the sidebar</p></div>';return}
+
+  let html=`<div class="de-actions">
+    <span style="font-size:15px;font-weight:700;flex:1">📝 Week ${wk.num}${wk.label?' — '+wk.label:''}</span>
+    <button class="btn btn-g" onclick="saveData()">💾 Save All</button>
+    <button class="btn btn-r" onclick="delWeek(${wk.num})">🗑️ Delete</button>
+  </div>
+  <div class="tbl-wrap"><table class="de-table"><thead><tr>
+    <th>#</th><th>Agent</th><th>💬 Chats</th><th>📞 Calls</th><th>📧 Emails</th><th>📢 Channels</th><th>Total</th>
+  </tr></thead><tbody>`;
+
+  AGENTS.forEach((ag,i)=>{
+    const d=wk.agents[ag]||{chats:0,calls:0,emails:0,channels:0};
+    const t=d.chats+d.calls+d.emails+d.channels;
+    html+=`<tr>
+      <td style="color:var(--muted);font-weight:600">${i+1}</td>
+      <td class="agent-name"><div class="agent-cell"><div class="ava" style="background:${avaColor(ag)}">${ini(ag)}</div>${ag}</div></td>
+      <td><input type="number" min="0" data-agent="${ag}" data-cat="chats" value="${d.chats}" oninput="liveTotal(this)"></td>
+      <td><input type="number" min="0" data-agent="${ag}" data-cat="calls" value="${d.calls}" oninput="liveTotal(this)"></td>
+      <td><input type="number" min="0" data-agent="${ag}" data-cat="emails" value="${d.emails}" oninput="liveTotal(this)"></td>
+      <td><input type="number" min="0" data-agent="${ag}" data-cat="channels" value="${d.channels}" oninput="liveTotal(this)"></td>
+      <td class="total-cell" id="rt-${i}">${t}</td>
+    </tr>`;
+  });
+
+  const sums={chats:0,calls:0,emails:0,channels:0,total:0};
+  AGENTS.forEach(ag=>{const d=wk.agents[ag]||{chats:0,calls:0,emails:0,channels:0};CATS.forEach(c=>sums[c]+=d[c]);sums.total+=d.chats+d.calls+d.emails+d.channels});
+  html+=`</tbody><tfoot><tr>
+    <td></td><td style="font-weight:800">TOTALS</td>
+    <td style="text-align:center;color:var(--accent2)" id="ft-chats">${sums.chats}</td>
+    <td style="text-align:center;color:var(--cyan)" id="ft-calls">${sums.calls}</td>
+    <td style="text-align:center;color:var(--green)" id="ft-emails">${sums.emails}</td>
+    <td style="text-align:center;color:var(--orange)" id="ft-channels">${sums.channels}</td>
+    <td class="total-cell" id="ft-total">${sums.total}</td>
+  </tr></tfoot></table></div>`;
+  main.innerHTML=html;
+}
+
+function liveTotal(el){
+  const row=el.closest('tr');
+  const inputs=row.querySelectorAll('input[type=number]');
+  let s=0;inputs.forEach(i=>s+=parseInt(i.value)||0);
+  const idx=row.rowIndex-1;
+  document.getElementById('rt-'+idx).textContent=s;
+  // footer
+  let ft={chats:0,calls:0,emails:0,channels:0,total:0};
+  document.querySelectorAll('.de-table tbody input[type=number]').forEach(inp=>{
+    const v=parseInt(inp.value)||0;
+    ft[inp.dataset.cat]+=v;ft.total+=v;
+  });
+  CATS.forEach(c=>{const e=document.getElementById('ft-'+c);if(e)e.textContent=ft[c]});
+  const te=document.getElementById('ft-total');if(te)te.textContent=ft.total;
+}
+
+function saveData(){
+  const wk=STATE.weeks.find(w=>w.num===STATE.activeWeek);
+  if(!wk)return;
+  document.querySelectorAll('.de-table tbody input[type=number]').forEach(inp=>{
+    const ag=inp.dataset.agent,cat=inp.dataset.cat;
+    if(!wk.agents[ag])wk.agents[ag]={chats:0,calls:0,emails:0,channels:0};
+    wk.agents[ag][cat]=parseInt(inp.value)||0;
+  });
+  save();renderDataEntry();toast('✅ Week '+wk.num+' saved!');
+}
+
+function addWeek(){
+  const num=parseInt(document.getElementById('wkNum').value);
+  const label=document.getElementById('wkLabel').value.trim();
+  if(!num||num<1){toast('⚠️ Enter a valid week number');return}
+  if(STATE.weeks.find(w=>w.num===num)){toast('⚠️ Week '+num+' already exists');return}
+  const agents={};AGENTS.forEach(a=>agents[a]={chats:0,calls:0,emails:0,channels:0});
+  STATE.weeks.push({num,label,agents});
+  STATE.activeWeek=num;
+  document.getElementById('wkNum').value='';
+  document.getElementById('wkLabel').value='';
+  save();renderDataEntry();toast('✅ Week '+num+' added!');
+}
+
+function delWeek(num){
+  if(!confirm('Delete Week '+num+'? This cannot be undone.'))return;
+  STATE.weeks=STATE.weeks.filter(w=>w.num!==num);
+  if(STATE.activeWeek===num)STATE.activeWeek=STATE.weeks.length?STATE.weeks[0].num:null;
+  save();renderDataEntry();toast('🗑️ Week '+num+' deleted');
+}
+
+/* ═══════════ DASHBOARD ═══════════ */
+let charts={};
+function renderDashboard(){
+  const fil=STATE.dashFilter||'all';
+  const weeks=fil==='all'?STATE.weeks:STATE.weeks.filter(w=>w.num===parseInt(fil));
+
+  // Aggregate per agent
+  const agg={};
+  AGENTS.forEach(a=>agg[a]={chats:0,calls:0,emails:0,channels:0,total:0});
+  weeks.forEach(w=>{
+    AGENTS.forEach(a=>{
+      const d=w.agents[a]||{chats:0,calls:0,emails:0,channels:0};
+      CATS.forEach(c=>agg[a][c]+=d[c]);
+      agg[a].total+=d.chats+d.calls+d.emails+d.channels;
+    });
+  });
+
+  const totals={chats:0,calls:0,emails:0,channels:0,total:0};
+  AGENTS.forEach(a=>{CATS.forEach(c=>totals[c]+=agg[a][c]);totals.total+=agg[a].total});
+
+  // Week filters
+  const fc=document.getElementById('weekFilters');
+  fc.innerHTML='<div class="chip'+(fil==='all'?' on':'')+'" onclick="setFilter(\'all\')">All Weeks</div>';
+  STATE.weeks.sort((a,b)=>a.num-b.num).forEach(w=>{
+    fc.innerHTML+=`<div class="chip${fil==w.num?' on':''}" onclick="setFilter(${w.num})">Week ${w.num}</div>`;
+  });
+
+  // KPIs
+  const activeAgents=AGENTS.filter(a=>agg[a].total>0).length;
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi total"><div class="lbl">Total Interactions</div><div class="num">${totals.total.toLocaleString()}</div></div>
+    <div class="kpi chats"><div class="lbl">💬 Total Chats</div><div class="num">${totals.chats.toLocaleString()}</div></div>
+    <div class="kpi calls"><div class="lbl">📞 Total Calls</div><div class="num">${totals.calls.toLocaleString()}</div></div>
+    <div class="kpi emails"><div class="lbl">📧 Total Emails</div><div class="num">${totals.emails.toLocaleString()}</div></div>
+    <div class="kpi channels"><div class="lbl">📢 Channel Queries</div><div class="num">${totals.channels.toLocaleString()}</div></div>
+    <div class="kpi agents"><div class="lbl">Active Agents</div><div class="num">${activeAgents}</div></div>`;
+
+  // Rank table
+  const sorted=AGENTS.map(a=>({name:a,...agg[a]})).sort((a,b)=>b.total-a.total);
+  const maxT=sorted[0]?.total||1;
+  const thead=document.querySelector('#rankTable thead');
+  const tbody=document.querySelector('#rankTable tbody');
+  thead.innerHTML=`<tr><th>Rank</th><th>Agent</th><th>💬 Chats</th><th>📞 Calls</th><th>📧 Emails</th><th>📢 Channels</th><th>Total</th><th>Performance</th></tr>`;
+  tbody.innerHTML='';
+  sorted.forEach((a,i)=>{
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    const pct=maxT?Math.round(a.total/maxT*100):0;
+    const barColor=i<3?'var(--gold)':i<10?'var(--accent)':'var(--muted)';
+    tbody.innerHTML+=`<tr>
+      <td class="rank-cell">${medal||i+1}</td>
+      <td><div class="agent-cell"><div class="ava" style="background:${avaColor(a.name)}">${ini(a.name)}</div><strong>${a.name}</strong></div></td>
+      <td style="text-align:center">${a.chats}</td>
+      <td style="text-align:center">${a.calls}</td>
+      <td style="text-align:center">${a.emails}</td>
+      <td style="text-align:center">${a.channels}</td>
+      <td style="text-align:center;font-weight:800;color:var(--accent2)">${a.total}</td>
+      <td class="bar-cell"><div style="font-size:11px;font-weight:700;color:var(--muted)">${pct}%</div><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div></td>
+    </tr>`;
+  });
+
+  // Charts
+  renderCharts(totals,sorted,agg);
+}
+
+function setFilter(v){STATE.dashFilter=v;save();renderDashboard()}
+
+function renderCharts(totals,sorted,agg){
+  Object.values(charts).forEach(c=>{if(c)c.destroy()});
+  const dOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6e7590',font:{size:11}}}}};
+
+  // Category doughnut
+  const ctx1=document.getElementById('chartCat').getContext('2d');
+  charts.cat=new Chart(ctx1,{type:'doughnut',data:{
+    labels:CATS.map(c=>CAT_META[c].label),
+    datasets:[{data:CATS.map(c=>totals[c]),backgroundColor:CATS.map(c=>CAT_META[c].color),borderWidth:0}]
+  },options:{...dOpts,cutout:'60%'}});
+
+  // Top 10 bar
+  const top10=sorted.filter(a=>a.total>0).slice(0,10);
+  const ctx2=document.getElementById('chartTop').getContext('2d');
+  charts.top=new Chart(ctx2,{type:'bar',data:{
+    labels:top10.map(a=>a.name.length>12?a.name.substring(0,12)+'…':a.name),
+    datasets:[{label:'Total',data:top10.map(a=>a.total),backgroundColor:'rgba(124,108,240,.7)',borderRadius:6}]
+  },options:{...dOpts,indexAxis:'y',scales:{x:{ticks:{color:'#6e7590'},grid:{color:'#1e2235'}},y:{ticks:{color:'#e4e7f1',font:{size:11}},grid:{display:false}}}}});
+
+  // Weekly trend
+  const wSorted=[...STATE.weeks].sort((a,b)=>a.num-b.num);
+  const ctx3=document.getElementById('chartTrend').getContext('2d');
+  charts.trend=new Chart(ctx3,{type:'line',data:{
+    labels:wSorted.map(w=>'W'+w.num),
+    datasets:CATS.map(c=>({
+      label:CAT_META[c].label,borderColor:CAT_META[c].color,backgroundColor:CAT_META[c].color+'33',
+      data:wSorted.map(w=>AGENTS.reduce((s,a)=>(w.agents[a]?.[c]||0)+s,0)),
+      tension:.4,fill:false,pointRadius:4
+    }))
+  },options:{...dOpts,scales:{x:{ticks:{color:'#6e7590'},grid:{color:'#1e2235'}},y:{ticks:{color:'#6e7590'},grid:{color:'#1e2235'}}}}});
+
+  // Stacked per agent
+  const active=sorted.filter(a=>a.total>0).slice(0,15);
+  const ctx4=document.getElementById('chartStack').getContext('2d');
+  charts.stack=new Chart(ctx4,{type:'bar',data:{
+    labels:active.map(a=>a.name.length>10?a.name.substring(0,10)+'…':a.name),
+    datasets:CATS.map(c=>({
+      label:CAT_META[c].label,backgroundColor:CAT_META[c].color,
+      data:active.map(a=>agg[a.name][c]),borderRadius:2
+    }))
+  },options:{...dOpts,scales:{x:{stacked:true,ticks:{color:'#e4e7f1',font:{size:10},maxRotation:45},grid:{display:false}},y:{stacked:true,ticks:{color:'#6e7590'},grid:{color:'#1e2235'}}}}});
+}
+
+/* ═══════════ INIT ═══════════ */
+load();
+renderDashboard();
+</script>
+</body>
+</html>
