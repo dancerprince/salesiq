@@ -11,7 +11,6 @@
 body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 
-/* TOP NAV */
 .nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100}
 .nav .logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px}
 .nav .logo em{font-style:normal;-webkit-text-fill-color:initial;font-size:22px}
@@ -19,34 +18,28 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);co
 .tab{padding:8px 22px;font-size:13px;font-weight:700;color:var(--muted);background:0;border:0;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
 .tab:hover{color:var(--text)}.tab.on{color:var(--accent2);border-color:var(--accent)}
 
-/* PAGE */
 .page{display:none;padding:24px 28px}.page.on{display:block}
 
-/* BUTTONS */
 .btn{padding:9px 18px;border-radius:var(--rs);font-size:12px;font-weight:700;cursor:pointer;border:0;display:inline-flex;align-items:center;gap:6px;transition:.15s}
 .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
 .btn-p{background:var(--accent);color:#fff}.btn-g{background:var(--green);color:#000}.btn-r{background:var(--red);color:#fff}
 .btn-o{background:0;border:1px dashed var(--accent);color:var(--accent2)}
 
-/* KPI */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center}
 .kpi .num{font-size:28px;font-weight:800;margin:6px 0 2px}.kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
 .kpi.chats .num{color:var(--accent2)}.kpi.calls .num{color:var(--cyan)}.kpi.emails .num{color:var(--green)}.kpi.channels .num{color:var(--orange)}.kpi.total .num{color:var(--pink)}.kpi.agents .num{color:var(--blue)}
 
-/* FILTER */
 .filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
 .chip{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:.15s}
 .chip:hover{border-color:var(--accent)}.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 
-/* CHARTS */
 .charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
 .chart-box{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
 .chart-box h3{font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600}
 .chart-box canvas{max-height:260px}
 @media(max-width:900px){.charts{grid-template-columns:1fr}}
 
-/* TABLE */
 .tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:auto;margin-bottom:20px}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{background:var(--surface);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:10px 14px;text-align:left;position:sticky;top:0;cursor:pointer;user-select:none;white-space:nowrap}
@@ -54,13 +47,11 @@ th:hover{color:var(--text)}
 td{padding:10px 14px;border-top:1px solid var(--border);white-space:nowrap}
 tr:hover td{background:rgba(124,108,240,.04)}
 .rank-cell{font-weight:800;font-size:15px;width:44px;text-align:center}
-.medal{font-size:16px}
 .agent-cell{display:flex;align-items:center;gap:10px}
 .ava{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
 .bar-cell{min-width:120px}.bar-wrap{background:var(--surface);border-radius:4px;height:7px;overflow:hidden;margin-top:3px}
 .bar-fill{height:100%;border-radius:4px;transition:width .4s}
 
-/* DATA ENTRY */
 .de-layout{display:flex;gap:18px;min-height:calc(100vh - 104px)}
 .de-sidebar{width:220px;flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 104px);overflow-y:auto}
 .de-main{flex:1;overflow:auto}
@@ -69,7 +60,7 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .wk-badge{font-size:10px;background:var(--surface);padding:2px 8px;border-radius:10px;color:var(--muted);font-weight:700}
 
 .add-wk{background:var(--card2);border:1px dashed var(--border);border-radius:var(--rs);padding:12px;margin-top:4px}
-.add-wk input,.add-wk select{width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;margin-bottom:6px;outline:0}
+.add-wk input{width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;margin-bottom:6px;outline:0}
 .add-wk input:focus{border-color:var(--accent)}
 
 .de-table{width:100%;border-collapse:collapse;font-size:13px}
@@ -81,19 +72,17 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .de-table input[type=number]:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,108,240,.15)}
 .de-table .total-cell{font-weight:800;color:var(--accent2);font-size:14px;text-align:center}
 .de-table tfoot td{background:var(--surface);font-weight:800;border-top:2px solid var(--accent)}
-.de-actions{display:flex;gap:10px;margin:14px 0;justify-content:flex-end}
+.de-actions{display:flex;gap:10px;margin:14px 0;justify-content:flex-end;align-items:center}
 .empty-state{text-align:center;padding:80px 20px;color:var(--muted)}
 .empty-state em{font-size:48px;display:block;margin-bottom:12px;font-style:normal}
 .empty-state p{font-size:14px}
 
-/* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#000;padding:12px 22px;border-radius:var(--rs);font-weight:700;font-size:13px;z-index:999;opacity:0;transform:translateY(20px);transition:.3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
 </style>
 </head>
 <body>
 
-<!-- NAV -->
 <div class="nav">
   <div class="logo"><em>📊</em> Agent Tracker</div>
   <div class="tabs">
@@ -102,7 +91,7 @@ tr:hover td{background:rgba(124,108,240,.04)}
   </div>
 </div>
 
-<!-- DASHBOARD PAGE -->
+<!-- DASHBOARD -->
 <div id="pg-dashboard" class="page on">
   <div class="filters" id="weekFilters"></div>
   <div class="kpis" id="kpis"></div>
@@ -116,7 +105,7 @@ tr:hover td{background:rgba(124,108,240,.04)}
   <div class="tbl-wrap"><table id="rankTable"><thead></thead><tbody></tbody></table></div>
 </div>
 
-<!-- DATA ENTRY PAGE -->
+<!-- DATA ENTRY -->
 <div id="pg-data" class="page">
   <div class="de-layout">
     <div class="de-sidebar">
@@ -157,10 +146,28 @@ const AVATARS=['#6c5ce7','#00cec9','#e17055','#00b894','#fdcb6e','#fd79a8','#74b
 function avaColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return AVATARS[Math.abs(h)%AVATARS.length]}
 function ini(n){const p=n.trim().split(/[\s.]+/);return p.length>1?(p[0][0]+p[p.length-1][0]).toUpperCase():n.substring(0,2).toUpperCase()}
 
-/* ═══════════ STATE ═══════════ */
-let STATE={weeks:[],activeWeek:null,dashFilter:'all'};
-function save(){localStorage.setItem('agt_v2',JSON.stringify(STATE))}
-function load(){try{STATE=JSON.parse(localStorage.getItem('agt_v2'))||{weeks:[],activeWeek:null,dashFilter:'all'}}catch(e){STATE={weeks:[],activeWeek:null,dashFilter:'all'}}}
+/* ═══════════ STATE — CLEAN START ═══════════ */
+const STORAGE_KEY = 'agt_tracker_v3';
+let STATE = {weeks:[], activeWeek:null, dashFilter:'all'};
+
+function save(){localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE))}
+function load(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) {
+      STATE = JSON.parse(raw);
+    } else {
+      STATE = {weeks:[], activeWeek:null, dashFilter:'all'};
+    }
+  } catch(e) {
+    STATE = {weeks:[], activeWeek:null, dashFilter:'all'};
+  }
+}
+
+// WIPE old data keys from previous versions
+localStorage.removeItem('agt_v2');
+localStorage.removeItem('agt_v1');
+localStorage.removeItem('agentTracker');
 
 /* ═══════════ TOAST ═══════════ */
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
@@ -192,7 +199,7 @@ function renderDataEntry(){
 
   const main=document.getElementById('deMain');
   const wk=STATE.weeks.find(w=>w.num===STATE.activeWeek);
-  if(!wk){main.innerHTML='<div class="empty-state"><em>📅</em><p>Add a week or select one from the sidebar</p></div>';return}
+  if(!wk){main.innerHTML='<div class="empty-state"><em>📅</em><p>Add a week or select one from the sidebar to start entering data</p></div>';return}
 
   let html=`<div class="de-actions">
     <span style="font-size:15px;font-weight:700;flex:1">📝 Week ${wk.num}${wk.label?' — '+wk.label:''}</span>
@@ -236,7 +243,6 @@ function liveTotal(el){
   let s=0;inputs.forEach(i=>s+=parseInt(i.value)||0);
   const idx=row.rowIndex-1;
   document.getElementById('rt-'+idx).textContent=s;
-  // footer
   let ft={chats:0,calls:0,emails:0,channels:0,total:0};
   document.querySelectorAll('.de-table tbody input[type=number]').forEach(inp=>{
     const v=parseInt(inp.value)||0;
@@ -283,7 +289,6 @@ function renderDashboard(){
   const fil=STATE.dashFilter||'all';
   const weeks=fil==='all'?STATE.weeks:STATE.weeks.filter(w=>w.num===parseInt(fil));
 
-  // Aggregate per agent
   const agg={};
   AGENTS.forEach(a=>agg[a]={chats:0,calls:0,emails:0,channels:0,total:0});
   weeks.forEach(w=>{
@@ -337,7 +342,6 @@ function renderDashboard(){
     </tr>`;
   });
 
-  // Charts
   renderCharts(totals,sorted,agg);
 }
 
@@ -386,7 +390,7 @@ function renderCharts(totals,sorted,agg){
   },options:{...dOpts,scales:{x:{stacked:true,ticks:{color:'#e4e7f1',font:{size:10},maxRotation:45},grid:{display:false}},y:{stacked:true,ticks:{color:'#6e7590'},grid:{color:'#1e2235'}}}}});
 }
 
-/* ═══════════ INIT ═══════════ */
+/* ═══════════ INIT — FRESH START ═══════════ */
 load();
 renderDashboard();
 </script>
