@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agent Performance Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
 <style>
 :root{--bg:#0b0d14;--surface:#111521;--card:#181d2e;--card2:#1f2537;--border:#282e44;--text:#e4e7f1;--muted:#6e7590;--accent:#7c6cf0;--accent2:#a78bfa;--accent-bg:rgba(124,108,240,.1);--cyan:#22d3ee;--green:#34d399;--orange:#fbbf24;--red:#f87171;--pink:#f472b6;--blue:#60a5fa;--gold:#ffd700;--silver:#c0c0c0;--bronze:#cd7f32;--r:12px;--rs:8px}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -24,6 +25,8 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);co
 .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
 .btn-p{background:var(--accent);color:#fff}.btn-g{background:var(--green);color:#000}.btn-r{background:var(--red);color:#fff}
 .btn-o{background:0;border:1px dashed var(--accent);color:var(--accent2)}
+.btn-img{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:none;box-shadow:0 2px 12px rgba(99,102,241,.35)}
+.btn-img:hover{box-shadow:0 4px 18px rgba(99,102,241,.5)}
 
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center}
@@ -73,13 +76,80 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .de-table input[type=number]:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,108,240,.15)}
 .de-table .total-cell{font-weight:800;color:var(--accent2);font-size:14px;text-align:center}
 .de-table tfoot td{background:var(--surface);font-weight:800;border-top:2px solid var(--accent)}
-.de-actions{display:flex;gap:10px;margin:14px 0;justify-content:flex-end;align-items:center}
+.de-table tr.ocr-filled td{background:rgba(34,211,238,.05);}
+.de-table tr.ocr-filled input[type=number]{border-color:var(--cyan);background:rgba(34,211,238,.07);}
+.de-actions{display:flex;gap:10px;margin:14px 0;justify-content:flex-end;align-items:center;flex-wrap:wrap}
 .empty-state{text-align:center;padding:80px 20px;color:var(--muted)}
 .empty-state em{font-size:48px;display:block;margin-bottom:12px;font-style:normal}
 .empty-state p{font-size:14px}
 
-.toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#000;padding:12px 22px;border-radius:var(--rs);font-weight:700;font-size:13px;z-index:999;opacity:0;transform:translateY(20px);transition:.3s;pointer-events:none}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#000;padding:12px 22px;border-radius:var(--rs);font-weight:700;font-size:13px;z-index:9999;opacity:0;transform:translateY(20px);transition:.3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
+
+/* ── OCR MODAL ─────────────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:880px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.modal-head h2{font-size:16px;flex:1;font-weight:800}
+.modal-head button{background:0;border:0;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;padding:4px}
+.modal-head button:hover{color:var(--text)}
+.modal-body{padding:20px 22px;overflow-y:auto;flex:1}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
+
+/* Upload drop zone */
+.upload-zone{border:2px dashed var(--border);border-radius:var(--r);padding:50px 30px;text-align:center;cursor:pointer;transition:.2s;position:relative}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--accent-bg)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-zone .uz-icon{font-size:48px;display:block;margin-bottom:12px}
+.upload-zone .uz-title{font-size:15px;font-weight:700;margin-bottom:6px}
+.upload-zone .uz-sub{font-size:12px;color:var(--muted)}
+
+/* OCR progress */
+.ocr-progress{text-align:center;padding:40px 20px}
+.ocr-progress .prog-icon{font-size:52px;display:block;margin-bottom:14px;animation:spin 1.5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ocr-progress .prog-title{font-size:15px;font-weight:700;margin-bottom:8px}
+.ocr-progress .prog-bar-wrap{background:var(--surface);border-radius:8px;height:8px;overflow:hidden;margin:12px auto;max-width:320px}
+.ocr-progress .prog-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--cyan));border-radius:8px;transition:width .3s}
+.ocr-progress .prog-status{font-size:12px;color:var(--muted)}
+
+/* OCR preview table */
+.ocr-preview-wrap{overflow:auto}
+.ocr-result-img{width:100%;max-height:200px;object-fit:contain;border-radius:var(--rs);border:1px solid var(--border);margin-bottom:16px}
+.ocr-stats{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.ocr-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:8px 14px;font-size:12px;font-weight:700}
+.ocr-stat span{color:var(--muted);font-weight:500}
+.ocr-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.ocr-tbl th{background:var(--surface);color:var(--muted);font-size:10px;text-transform:uppercase;padding:8px 10px;text-align:left;position:sticky;top:0}
+.ocr-tbl td{padding:7px 10px;border-top:1px solid var(--border)}
+.ocr-tbl .match-good{color:var(--green);font-weight:700}
+.ocr-tbl .match-ok{color:var(--orange);font-weight:700}
+.ocr-tbl .match-none{color:var(--red);font-weight:700}
+.ocr-tbl .num-val{text-align:center;font-weight:700;color:var(--accent2)}
+.ocr-tbl tr:hover td{background:rgba(124,108,240,.04)}
+.badge-match{font-size:10px;padding:1px 7px;border-radius:8px;margin-left:6px}
+.badge-exact{background:rgba(52,211,153,.15);color:var(--green)}
+.badge-fuzzy{background:rgba(251,191,36,.15);color:var(--orange)}
+.badge-skip{background:rgba(248,113,113,.15);color:var(--red)}
+
+/* column map selects */
+.col-map{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:var(--surface);border-radius:var(--rs);border:1px solid var(--border)}
+.col-map-item{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);font-weight:600}
+.col-map-item select{padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:12px;outline:0;cursor:pointer;min-width:120px}
+.col-map-item select:focus{border-color:var(--accent)}
+
+.warn-box{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:var(--rs);padding:10px 14px;font-size:12px;color:var(--orange);margin-bottom:12px}
+.info-box{background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:var(--rs);padding:10px 14px;font-size:12px;color:var(--cyan);margin-bottom:12px}
+
+/* ── Date picker in OCR modal ── */
+.ocr-date-picker{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs)}
+.ocr-date-picker label{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px}
+.ocr-date-picker input[type=date]{padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;font-weight:600;outline:0;cursor:pointer}
+.ocr-date-picker input[type=date]:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,108,240,.15)}
+.ocr-date-picker .date-hint{font-size:11px;color:var(--muted);margin-left:auto}
+.ocr-date-new-badge{font-size:10px;background:rgba(52,211,153,.15);color:var(--green);padding:2px 8px;border-radius:8px;font-weight:700;margin-left:6px}
+.ocr-date-exist-badge{font-size:10px;background:rgba(251,191,36,.15);color:var(--orange);padding:2px 8px;border-radius:8px;font-weight:700;margin-left:6px}
 </style>
 </head>
 <body>
@@ -95,15 +165,9 @@ tr:hover td{background:rgba(124,108,240,.04)}
 <!-- DASHBOARD -->
 <div id="pg-dashboard" class="page on">
   <div class="filters" id="dayFilters"></div>
-
-  <!-- RANKINGS FIRST -->
   <h3 style="margin-bottom:12px;font-size:15px">🏆 Agent Rankings</h3>
   <div class="tbl-wrap"><table id="rankTable"><thead></thead><tbody></tbody></table></div>
-
-  <!-- KPIs BELOW RANKINGS -->
   <div class="kpis" id="kpis"></div>
-
-  <!-- CHARTS AT BOTTOM -->
   <div class="charts">
     <div class="chart-box"><h3>📊 Category Breakdown</h3><canvas id="chartCat"></canvas></div>
     <div class="chart-box"><h3>🏆 Top 10 Agents</h3><canvas id="chartTop"></canvas></div>
@@ -132,6 +196,70 @@ tr:hover td{background:rgba(124,108,240,.04)}
 
 <div class="toast" id="toast"></div>
 
+<!-- ══════════ OCR MODAL ══════════ -->
+<div class="modal-overlay" id="ocrModal">
+  <div class="modal">
+    <div class="modal-head">
+      <span style="font-size:22px">🖼️</span>
+      <h2>Import Data from Image</h2>
+      <button onclick="closeOcrModal()" title="Close">✕</button>
+    </div>
+    <div class="modal-body" id="ocrModalBody">
+      <!-- Step 1: Upload -->
+      <div id="ocrStep1">
+        <div class="info-box">📌 Upload a screenshot or photo of your agent performance table. The system will automatically extract agent names and numbers.</div>
+
+        <!-- ── DATE PICKER ── -->
+        <div class="ocr-date-picker">
+          <label>📅 Import to date:</label>
+          <input type="date" id="ocrTargetDate" onchange="updateOcrDateHint()">
+          <span id="ocrDateHint" class="date-hint"></span>
+        </div>
+
+        <div class="upload-zone" id="uploadZone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <input type="file" accept="image/*" id="imgFileInput" onchange="handleFileSelect(event)">
+          <span class="uz-icon">📷</span>
+          <div class="uz-title">Click to upload or drag & drop</div>
+          <div class="uz-sub">Supports PNG, JPG, JPEG, BMP, WebP — spreadsheet screenshots work best</div>
+        </div>
+      </div>
+      <!-- Step 2: Processing -->
+      <div id="ocrStep2" style="display:none">
+        <div class="ocr-progress">
+          <span class="prog-icon">⚙️</span>
+          <div class="prog-title" id="progTitle">Initialising OCR engine…</div>
+          <div class="prog-bar-wrap"><div class="prog-bar" id="progBar" style="width:0%"></div></div>
+          <div class="prog-status" id="progStatus">Please wait…</div>
+        </div>
+      </div>
+      <!-- Step 3: Map & Preview -->
+      <div id="ocrStep3" style="display:none">
+        <img id="ocrPreviewImg" class="ocr-result-img" src="" alt="Uploaded image">
+
+        <!-- ── DATE PICKER (also shown in step 3) ── -->
+        <div class="ocr-date-picker">
+          <label>📅 Target date:</label>
+          <input type="date" id="ocrTargetDate3" onchange="syncOcrDates(this)">
+          <span id="ocrDateHint3" class="date-hint"></span>
+        </div>
+
+        <div class="info-box" id="ocrInfoBox"></div>
+        <div id="ocrWarnBox" style="display:none" class="warn-box"></div>
+
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--muted)">🗂️ MAP COLUMNS — tell us which column contains what:</div>
+        <div class="col-map" id="colMap"></div>
+
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--muted)">👁️ PREVIEW — extracted data matched to agents:</div>
+        <div class="ocr-stats" id="ocrStats"></div>
+        <div class="ocr-preview-wrap"><table class="ocr-tbl" id="ocrPreviewTbl"><thead></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+    <div class="modal-foot" id="ocrModalFoot">
+      <button class="btn btn-r" onclick="closeOcrModal()">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ═══════════ AGENTS ═══════════ */
 const AGENTS=[
@@ -158,14 +286,12 @@ function getTodayStr(){
   const d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
-
 function formatDate(dateStr){
   const d=new Date(dateStr+'T00:00:00');
   const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return days[d.getDay()]+', '+d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
 }
-
 function formatDateShort(dateStr){
   const d=new Date(dateStr+'T00:00:00');
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -173,25 +299,23 @@ function formatDateShort(dateStr){
 }
 
 /* ═══════════ STATE ═══════════ */
-const STORAGE_KEY = 'agt_tracker_v4_daily';
-let STATE = {days:[], activeDay:null, dashFilter:'today'};
-
-function save(){localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE))}
+const STORAGE_KEY='agt_tracker_v4_daily';
+let STATE={days:[],activeDay:null,dashFilter:'today'};
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(STATE))}
 function load(){
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw) {
-      STATE = JSON.parse(raw);
-    } else {
-      STATE = {days:[], activeDay:null, dashFilter:'today'};
-    }
-  } catch(e) {
-    STATE = {days:[], activeDay:null, dashFilter:'today'};
-  }
+  try{const raw=localStorage.getItem(STORAGE_KEY);if(raw)STATE=JSON.parse(raw);else STATE={days:[],activeDay:null,dashFilter:'today'}}
+  catch(e){STATE={days:[],activeDay:null,dashFilter:'today'}}
 }
 
 /* ═══════════ TOAST ═══════════ */
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function toast(m,col){
+  const t=document.getElementById('toast');
+  t.textContent=m;
+  t.style.background=col||'var(--green)';
+  t.style.color=col?'#fff':'#000';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
 
 /* ═══════════ NAV ═══════════ */
 function showPage(p){
@@ -208,17 +332,12 @@ function renderDataEntry(){
   const dl=document.getElementById('dayList');
   dl.innerHTML='';
   const today=getTodayStr();
-
-  // Sort days descending (newest first)
   STATE.days.sort((a,b)=>b.date.localeCompare(a.date));
-
-  // Auto-select today if it exists and nothing is active
   if(!STATE.activeDay){
     const todayEntry=STATE.days.find(d=>d.date===today);
     if(todayEntry) STATE.activeDay=today;
     else if(STATE.days.length) STATE.activeDay=STATE.days[0].date;
   }
-
   STATE.days.forEach(d=>{
     const tot=Object.values(d.agents).reduce((s,a)=>s+a.chats+a.calls+a.emails+a.channels,0);
     const isToday=d.date===today;
@@ -228,19 +347,16 @@ function renderDataEntry(){
     el.onclick=()=>{STATE.activeDay=d.date;save();renderDataEntry()};
     dl.appendChild(el);
   });
-
-  // Set default date input to today
   document.getElementById('dayDate').value=today;
-
   const main=document.getElementById('deMain');
   const day=STATE.days.find(d=>d.date===STATE.activeDay);
   if(!day){main.innerHTML='<div class="empty-state"><em>📅</em><p>Add a day or click "Add Today" to start entering data</p></div>';return}
-
   const isToday=day.date===today;
   const dateLabel=formatDate(day.date)+(isToday?' — 📌 TODAY':'');
 
   let html=`<div class="de-actions">
     <span style="font-size:15px;font-weight:700;flex:1">📝 ${dateLabel}</span>
+    <button class="btn btn-img" onclick="openOcrModal()">🖼️ Import from Image</button>
     <button class="btn btn-g" onclick="saveData()">💾 Save All</button>
     <button class="btn btn-r" onclick="delDay('${day.date}')">🗑️ Delete</button>
   </div>
@@ -251,7 +367,7 @@ function renderDataEntry(){
   AGENTS.forEach((ag,i)=>{
     const d=day.agents[ag]||{chats:0,calls:0,emails:0,channels:0};
     const t=d.chats+d.calls+d.emails+d.channels;
-    html+=`<tr>
+    html+=`<tr id="agent-row-${i}">
       <td style="color:var(--muted);font-weight:600">${i+1}</td>
       <td class="agent-name"><div class="agent-cell"><div class="ava" style="background:${avaColor(ag)}">${ini(ag)}</div>${ag}</div></td>
       <td><input type="number" min="0" data-agent="${ag}" data-cat="chats" value="${d.chats}" oninput="liveTotal(this)"></td>
@@ -283,8 +399,7 @@ function liveTotal(el){
   document.getElementById('rt-'+idx).textContent=s;
   let ft={chats:0,calls:0,emails:0,channels:0,total:0};
   document.querySelectorAll('.de-table tbody input[type=number]').forEach(inp=>{
-    const v=parseInt(inp.value)||0;
-    ft[inp.dataset.cat]+=v;ft.total+=v;
+    const v=parseInt(inp.value)||0;ft[inp.dataset.cat]+=v;ft.total+=v;
   });
   CATS.forEach(c=>{const e=document.getElementById('ft-'+c);if(e)e.textContent=ft[c]});
   const te=document.getElementById('ft-total');if(te)te.textContent=ft.total;
@@ -303,8 +418,8 @@ function saveData(){
 
 function addDay(){
   const dateVal=document.getElementById('dayDate').value;
-  if(!dateVal){toast('⚠️ Please select a date');return}
-  if(STATE.days.find(d=>d.date===dateVal)){toast('⚠️ '+formatDate(dateVal)+' already exists');return}
+  if(!dateVal){toast('⚠️ Please select a date','#f87171');return}
+  if(STATE.days.find(d=>d.date===dateVal)){toast('⚠️ '+formatDate(dateVal)+' already exists','#fbbf24');return}
   const agents={};AGENTS.forEach(a=>agents[a]={chats:0,calls:0,emails:0,channels:0});
   STATE.days.push({date:dateVal,agents});
   STATE.activeDay=dateVal;
@@ -314,15 +429,12 @@ function addDay(){
 function addToday(){
   const today=getTodayStr();
   if(STATE.days.find(d=>d.date===today)){
-    // Already exists, just select it
-    STATE.activeDay=today;
-    save();renderDataEntry();toast('📌 Switched to today');
-    return;
+    STATE.activeDay=today;save();renderDataEntry();toast('📌 Switched to today');return;
   }
   const agents={};AGENTS.forEach(a=>agents[a]={chats:0,calls:0,emails:0,channels:0});
   STATE.days.push({date:today,agents});
   STATE.activeDay=today;
-  save();renderDataEntry();toast('✅ Today\'s entry created!');
+  save();renderDataEntry();toast("✅ Today's entry created!");
 }
 
 function delDay(date){
@@ -333,7 +445,425 @@ function delDay(date){
     const todayEntry=STATE.days.find(d=>d.date===today);
     STATE.activeDay=todayEntry?today:(STATE.days.length?STATE.days[0].date:null);
   }
-  save();renderDataEntry();toast('🗑️ Entry deleted');
+  save();renderDataEntry();toast('🗑️ Entry deleted','#f87171');
+}
+
+/* ═══════════════════════════════════════════
+   OCR / IMAGE IMPORT SYSTEM
+═══════════════════════════════════════════ */
+
+let _ocrParsed=[];    // [{rawName, matchedAgent, matchQuality, chats, calls, emails, channels}]
+let _ocrHeaders=[];   // detected column headers from image
+let _ocrImageUrl='';  // preview URL
+let _lastRawRows=[];  // store raw rows for remapping
+
+/* ── Fuzzy string match (Levenshtein ratio) ── */
+function levenshtein(a,b){
+  a=a.toLowerCase().trim();b=b.toLowerCase().trim();
+  const m=a.length,n=b.length;
+  const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i?j?0:i:j));
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+function similarity(a,b){
+  const maxLen=Math.max(a.length,b.length);
+  if(!maxLen)return 1;
+  return (maxLen-levenshtein(a,b))/maxLen;
+}
+function bestAgentMatch(rawName){
+  let best=null,bestScore=0;
+  const rn=rawName.toLowerCase().trim();
+  for(const ag of AGENTS){
+    const agL=ag.toLowerCase();
+    if(agL===rn)return {agent:ag,score:1,quality:'exact'};
+    const sc1=agL.includes(rn)||rn.includes(agL)?0.85:0;
+    const sc2=similarity(rn,agL);
+    const fn1=rn.split(/[\s.]+/)[0],fn2=agL.split(/[\s.]+/)[0];
+    const sc3=fn1===fn2?0.75:0;
+    const sc=Math.max(sc1,sc2,sc3);
+    if(sc>bestScore){bestScore=sc;best=ag}
+  }
+  if(bestScore>=0.85)return {agent:best,score:bestScore,quality:'exact'};
+  if(bestScore>=0.55)return {agent:best,score:bestScore,quality:'fuzzy'};
+  return {agent:null,score:bestScore,quality:'none'};
+}
+
+/* ── Parse OCR text into rows ── */
+function parseOcrText(rawText){
+  const lines=rawText.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
+  const rows=[];
+
+  const headerKeywords=['agent','name','chat','email','call','meeting','channel','query'];
+  let headerIdx=-1;
+  for(let i=0;i<Math.min(lines.length,8);i++){
+    const l=lines[i].toLowerCase();
+    const hits=headerKeywords.filter(k=>l.includes(k)).length;
+    if(hits>=2){headerIdx=i;break}
+  }
+
+  let detectedCols=[];
+  if(headerIdx>=0){
+    const hLine=lines[headerIdx];
+    detectedCols=hLine.split(/\s{2,}|\t+/).map(s=>s.trim()).filter(Boolean);
+    _ocrHeaders=detectedCols;
+  } else {
+    _ocrHeaders=[];
+  }
+
+  const startIdx=headerIdx>=0?headerIdx+1:0;
+  for(let i=startIdx;i<lines.length;i++){
+    const line=lines[i];
+    const parts=line.split(/\s{2,}|\t+/).map(s=>s.trim()).filter(Boolean);
+    if(parts.length<2)continue;
+    const firstPart=parts[0];
+    if(!/[a-zA-Z]/.test(firstPart))continue;
+    if(/^\d+$/.test(firstPart))continue;
+
+    const nums=[];
+    for(let j=1;j<parts.length;j++){
+      const v=parseInt(parts[j].replace(/[^0-9]/g,''));
+      if(!isNaN(v))nums.push(v);
+    }
+    if(nums.length===0)continue;
+    rows.push({rawName:firstPart, nums});
+  }
+  _lastRawRows=rows;
+  return rows;
+}
+
+/* ── Map numeric columns to categories ── */
+function buildMappedData(rows, colIndices){
+  return rows.map(r=>{
+    const get=(idx)=>idx>=0&&idx<r.nums.length?r.nums[idx]:0;
+    const match=bestAgentMatch(r.rawName);
+    return {
+      rawName:r.rawName,
+      matchedAgent:match.agent,
+      matchQuality:match.quality,
+      matchScore:match.score,
+      chats:get(colIndices.chats),
+      calls:get(colIndices.calls),
+      emails:get(colIndices.emails),
+      channels:get(colIndices.channels)
+    };
+  });
+}
+
+/* ── Column mapping auto-guess from headers ── */
+function autoGuessColMap(headers){
+  const map={chats:-1,calls:-1,emails:-1,channels:-1};
+  if(!headers.length){
+    map.chats=0; map.emails=1; map.channels=2; map.calls=3;
+    return map;
+  }
+  headers.forEach((h,i)=>{
+    const hl=h.toLowerCase();
+    if(/(chat)/.test(hl))map.chats=i;
+    else if(/(call|phone)/.test(hl))map.calls=i;
+    else if(/(email|mail|response)/.test(hl))map.emails=i;
+    else if(/(channel|query|queries)/.test(hl))map.channels=i;
+    else if(/(meet)/.test(hl)&&map.calls===-1)map.calls=i;
+  });
+  return map;
+}
+
+/* ── OCR Date Helper ── */
+function updateOcrDateHint(){
+  const dateVal=document.getElementById('ocrTargetDate').value;
+  const hint=document.getElementById('ocrDateHint');
+  if(!dateVal){hint.innerHTML='';return}
+  const exists=STATE.days.find(d=>d.date===dateVal);
+  if(exists){
+    hint.innerHTML=`<span class="ocr-date-exist-badge">⚠️ Exists — will overwrite</span> ${formatDate(dateVal)}`;
+  }else{
+    hint.innerHTML=`<span class="ocr-date-new-badge">✨ New entry</span> ${formatDate(dateVal)}`;
+  }
+  // Also sync step 3 date picker
+  const d3=document.getElementById('ocrTargetDate3');
+  if(d3)d3.value=dateVal;
+  updateOcrDateHint3();
+}
+function updateOcrDateHint3(){
+  const dateVal=document.getElementById('ocrTargetDate3').value;
+  const hint=document.getElementById('ocrDateHint3');
+  if(!dateVal){hint.innerHTML='';return}
+  const exists=STATE.days.find(d=>d.date===dateVal);
+  if(exists){
+    hint.innerHTML=`<span class="ocr-date-exist-badge">⚠️ Exists — will overwrite</span> ${formatDate(dateVal)}`;
+  }else{
+    hint.innerHTML=`<span class="ocr-date-new-badge">✨ New entry</span> ${formatDate(dateVal)}`;
+  }
+}
+function syncOcrDates(el){
+  const v=el.value;
+  document.getElementById('ocrTargetDate').value=v;
+  document.getElementById('ocrTargetDate3').value=v;
+  updateOcrDateHint();
+  updateOcrDateHint3();
+}
+
+/* ── OCR Modal ── */
+function openOcrModal(){
+  resetOcrModal();
+  // Default date = currently active day or today
+  const defaultDate=STATE.activeDay||getTodayStr();
+  document.getElementById('ocrTargetDate').value=defaultDate;
+  updateOcrDateHint();
+  document.getElementById('ocrModal').classList.add('show');
+}
+
+function closeOcrModal(){
+  document.getElementById('ocrModal').classList.remove('show');
+  resetOcrModal();
+}
+
+function resetOcrModal(){
+  showOcrStep(1);
+  _ocrParsed=[];_ocrHeaders=[];_ocrImageUrl='';_lastRawRows=[];
+  document.getElementById('imgFileInput').value='';
+  document.getElementById('ocrModalFoot').innerHTML=`<button class="btn btn-r" onclick="closeOcrModal()">✕ Cancel</button>`;
+}
+
+function showOcrStep(n){
+  [1,2,3].forEach(i=>{
+    const el=document.getElementById('ocrStep'+i);
+    if(el)el.style.display=(i===n?'block':'none');
+  });
+}
+
+/* Drag & drop */
+function handleDragOver(e){e.preventDefault();document.getElementById('uploadZone').classList.add('drag')}
+function handleDragLeave(){document.getElementById('uploadZone').classList.remove('drag')}
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag');
+  const file=e.dataTransfer.files[0];
+  if(file&&file.type.startsWith('image/')) processImageFile(file);
+  else toast('⚠️ Please drop an image file','#f87171');
+}
+function handleFileSelect(e){
+  const file=e.target.files[0];
+  if(file) processImageFile(file);
+}
+
+/* ── Run Tesseract OCR ── */
+async function processImageFile(file){
+  // Validate date is selected
+  const targetDate=document.getElementById('ocrTargetDate').value;
+  if(!targetDate){
+    toast('⚠️ Please select a target date first','#f87171');
+    return;
+  }
+
+  _ocrImageUrl=URL.createObjectURL(file);
+  showOcrStep(2);
+
+  const setProgress=(pct,title,status)=>{
+    document.getElementById('progBar').style.width=pct+'%';
+    if(title)document.getElementById('progTitle').textContent=title;
+    if(status)document.getElementById('progStatus').textContent=status;
+  };
+
+  try{
+    setProgress(5,'Loading image…','Preparing Tesseract OCR engine');
+    const worker=await Tesseract.createWorker('eng',1,{
+      logger:m=>{
+        if(m.status==='recognizing text'){
+          setProgress(20+Math.round(m.progress*70),'Reading text from image…',`${Math.round(m.progress*100)}% complete`);
+        } else if(m.status==='loading tesseract core'){
+          setProgress(10,'Loading OCR engine…',m.status);
+        } else if(m.status==='initializing tesseract'){
+          setProgress(15,'Initialising…',m.status);
+        }
+      }
+    });
+
+    setProgress(90,'Parsing extracted text…','Building data table');
+    const {data:{text}}=await worker.recognize(_ocrImageUrl);
+    await worker.terminate();
+
+    setProgress(100,'Done!','Extraction complete');
+    await new Promise(r=>setTimeout(r,400));
+
+    const rawRows=parseOcrText(text);
+    if(rawRows.length===0){
+      showOcrStep(1);
+      toast('⚠️ No table data found in image. Try a clearer screenshot.','#f87171');
+      return;
+    }
+
+    const colMap=autoGuessColMap(_ocrHeaders);
+    _ocrParsed=buildMappedData(rawRows,colMap);
+
+    showOcrStep(3);
+    // Sync the date picker in step 3
+    document.getElementById('ocrTargetDate3').value=targetDate;
+    updateOcrDateHint3();
+
+    renderOcrPreview(rawRows, colMap);
+    document.getElementById('ocrModalFoot').innerHTML=`
+      <button class="btn btn-r" onclick="closeOcrModal()">✕ Cancel</button>
+      <button class="btn" style="background:var(--orange);color:#000" onclick="resetOcrModal()">🔄 Re-upload</button>
+      <button class="btn btn-img" onclick="applyOcrData()">✅ Apply to Data Entry</button>`;
+
+  }catch(err){
+    console.error(err);
+    showOcrStep(1);
+    toast('❌ OCR failed: '+err.message,'#f87171');
+  }
+}
+
+/* ── Render Preview Table in Step 3 ── */
+function renderOcrPreview(rawRows, currentColMap){
+  document.getElementById('ocrPreviewImg').src=_ocrImageUrl;
+
+  const matched=_ocrParsed.filter(r=>r.matchQuality!=='none').length;
+  const exact=_ocrParsed.filter(r=>r.matchQuality==='exact').length;
+  const fuzzy=_ocrParsed.filter(r=>r.matchQuality==='fuzzy').length;
+  const skipped=_ocrParsed.filter(r=>r.matchQuality==='none').length;
+  document.getElementById('ocrInfoBox').innerHTML=
+    `✅ <strong>${rawRows.length}</strong> data rows detected &nbsp;·&nbsp; `+
+    `<strong>${matched}</strong> agents matched &nbsp;·&nbsp; `+
+    `<strong>${exact}</strong> exact &nbsp;·&nbsp; `+
+    `<strong>${fuzzy}</strong> fuzzy &nbsp;·&nbsp; `+
+    `<strong>${skipped}</strong> unmatched`;
+
+  if(skipped>0){
+    document.getElementById('ocrWarnBox').style.display='block';
+    document.getElementById('ocrWarnBox').textContent=
+      `⚠️ ${skipped} row(s) could not be matched to any known agent and will be skipped.`;
+  } else {
+    document.getElementById('ocrWarnBox').style.display='none';
+  }
+
+  const totalChats=_ocrParsed.reduce((s,r)=>s+r.chats,0);
+  const totalEmails=_ocrParsed.reduce((s,r)=>s+r.emails,0);
+  const totalChannels=_ocrParsed.reduce((s,r)=>s+r.channels,0);
+  const totalCalls=_ocrParsed.reduce((s,r)=>s+r.calls,0);
+  document.getElementById('ocrStats').innerHTML=
+    `<div class="ocr-stat">💬 Chats <span>${totalChats}</span></div>`+
+    `<div class="ocr-stat">📧 Emails <span>${totalEmails}</span></div>`+
+    `<div class="ocr-stat">📢 Channels <span>${totalChannels}</span></div>`+
+    `<div class="ocr-stat">📞 Calls <span>${totalCalls}</span></div>`;
+
+  const numColCount=rawRows.length?rawRows[0].nums.length:4;
+  const noneOpt='<option value="-1">— Not present —</option>';
+
+  const catDefs=[
+    {cat:'chats',icon:'💬',label:'Chats',val:currentColMap.chats},
+    {cat:'emails',icon:'📧',label:'Emails',val:currentColMap.emails},
+    {cat:'channels',icon:'📢',label:'Channels',val:currentColMap.channels},
+    {cat:'calls',icon:'📞',label:'Calls / Meetings',val:currentColMap.calls},
+  ];
+
+  let colMapHtml='';
+  catDefs.forEach(cd=>{
+    const opts=noneOpt+Array.from({length:numColCount},(_,i)=>{
+      const lbl=_ocrHeaders[i]?`Col ${i+1}: ${_ocrHeaders[i]}`:`Column ${i+1}`;
+      return `<option value="${i}"${cd.val===i?' selected':''}>${lbl}</option>`;
+    }).join('');
+    colMapHtml+=`<div class="col-map-item"><span>${cd.icon} ${cd.label}</span><select id="colmap-${cd.cat}" onchange="remapColumns()">${opts}</select></div>`;
+  });
+  document.getElementById('colMap').innerHTML=colMapHtml;
+
+  buildOcrTable();
+}
+
+function remapColumns(){
+  const getVal=(id)=>parseInt(document.getElementById(id)?.value??-1);
+  const colIndices={
+    chats:getVal('colmap-chats'),
+    emails:getVal('colmap-emails'),
+    channels:getVal('colmap-channels'),
+    calls:getVal('colmap-calls')
+  };
+
+  _ocrParsed=buildMappedData(_lastRawRows,colIndices);
+  buildOcrTable();
+
+  const totalChats=_ocrParsed.reduce((s,r)=>s+r.chats,0);
+  const totalEmails=_ocrParsed.reduce((s,r)=>s+r.emails,0);
+  const totalChannels=_ocrParsed.reduce((s,r)=>s+r.channels,0);
+  const totalCalls=_ocrParsed.reduce((s,r)=>s+r.calls,0);
+  document.getElementById('ocrStats').innerHTML=
+    `<div class="ocr-stat">💬 Chats <span>${totalChats}</span></div>`+
+    `<div class="ocr-stat">📧 Emails <span>${totalEmails}</span></div>`+
+    `<div class="ocr-stat">📢 Channels <span>${totalChannels}</span></div>`+
+    `<div class="ocr-stat">📞 Calls <span>${totalCalls}</span></div>`;
+}
+
+function buildOcrTable(){
+  const thead=document.querySelector('#ocrPreviewTbl thead');
+  const tbody=document.querySelector('#ocrPreviewTbl tbody');
+  thead.innerHTML=`<tr><th>Raw Name (from image)</th><th>Matched Agent</th><th>Match</th><th>💬 Chats</th><th>📧 Emails</th><th>📢 Channels</th><th>📞 Calls</th></tr>`;
+  tbody.innerHTML='';
+  _ocrParsed.forEach(r=>{
+    const qClass=r.matchQuality==='exact'?'match-good':r.matchQuality==='fuzzy'?'match-ok':'match-none';
+    const qBadge=r.matchQuality==='exact'?'badge-exact':r.matchQuality==='fuzzy'?'badge-fuzzy':'badge-skip';
+    const qLabel=r.matchQuality==='exact'?'Exact':r.matchQuality==='fuzzy'?`Fuzzy ${Math.round(r.matchScore*100)}%`:'No match';
+    const agentDisplay=r.matchedAgent||`<span style="color:var(--red);opacity:.7">${r.rawName} (skipped)</span>`;
+    tbody.innerHTML+=`<tr>
+      <td style="color:var(--muted);font-style:italic">${r.rawName}</td>
+      <td class="${qClass}">${agentDisplay}</td>
+      <td><span class="badge-match ${qBadge}">${qLabel}</span></td>
+      <td class="num-val">${r.chats}</td>
+      <td class="num-val">${r.emails}</td>
+      <td class="num-val">${r.channels}</td>
+      <td class="num-val">${r.calls}</td>
+    </tr>`;
+  });
+}
+
+/* ── Apply OCR data into the selected date ── */
+function applyOcrData(){
+  // Use the date from the OCR modal date picker (step 3 takes priority)
+  const targetDate=document.getElementById('ocrTargetDate3').value||document.getElementById('ocrTargetDate').value;
+  if(!targetDate){
+    toast('⚠️ Please select a target date','#f87171');
+    return;
+  }
+
+  const toApply=_ocrParsed.filter(r=>r.matchedAgent&&r.matchQuality!=='none');
+  if(!toApply.length){toast('⚠️ No valid matches to apply','#fbbf24');return}
+
+  // Find or create the day entry
+  let day=STATE.days.find(d=>d.date===targetDate);
+  if(!day){
+    const agents={};
+    AGENTS.forEach(a=>agents[a]={chats:0,calls:0,emails:0,channels:0});
+    day={date:targetDate,agents};
+    STATE.days.push(day);
+  }
+
+  // Apply extracted data
+  toApply.forEach(r=>{
+    if(!day.agents[r.matchedAgent]) day.agents[r.matchedAgent]={chats:0,calls:0,emails:0,channels:0};
+    day.agents[r.matchedAgent].chats=r.chats;
+    day.agents[r.matchedAgent].calls=r.calls;
+    day.agents[r.matchedAgent].emails=r.emails;
+    day.agents[r.matchedAgent].channels=r.channels;
+  });
+
+  // Switch to the target date
+  STATE.activeDay=targetDate;
+  save();
+  closeOcrModal();
+  renderDataEntry();
+
+  // Highlight filled rows
+  toApply.forEach(r=>{
+    const idx=AGENTS.indexOf(r.matchedAgent);
+    if(idx>=0){
+      const row=document.getElementById('agent-row-'+idx);
+      if(row){
+        row.classList.add('ocr-filled');
+        setTimeout(()=>row.classList.remove('ocr-filled'),4000);
+      }
+    }
+  });
+
+  toast(`🖼️ Imported ${toApply.length} records → ${formatDate(targetDate)}!`);
 }
 
 /* ═══════════ DASHBOARD ═══════════ */
@@ -342,15 +872,9 @@ function renderDashboard(){
   const fil=STATE.dashFilter||'today';
   const today=getTodayStr();
   let filteredDays;
-
-  if(fil==='today'){
-    // "Today" filter — show today's data (which is always the current day's entry)
-    filteredDays=STATE.days.filter(d=>d.date===today);
-  } else if(fil==='all'){
-    filteredDays=STATE.days;
-  } else {
-    filteredDays=STATE.days.filter(d=>d.date===fil);
-  }
+  if(fil==='today') filteredDays=STATE.days.filter(d=>d.date===today);
+  else if(fil==='all') filteredDays=STATE.days;
+  else filteredDays=STATE.days.filter(d=>d.date===fil);
 
   const agg={};
   AGENTS.forEach(a=>agg[a]={chats:0,calls:0,emails:0,channels:0,total:0});
@@ -365,43 +889,46 @@ function renderDashboard(){
   const totals={chats:0,calls:0,emails:0,channels:0,total:0};
   AGENTS.forEach(a=>{CATS.forEach(c=>totals[c]+=agg[a][c]);totals.total+=agg[a].total});
 
-  // Day filters
   const fc=document.getElementById('dayFilters');
-  let filterHtml='';
-  filterHtml+=`<div class="chip${fil==='today'?' on':''}" onclick="setFilter('today')">📌 Today</div>`;
+  let filterHtml=`<div class="chip${fil==='today'?' on':''}" onclick="setFilter('today')">📌 Today</div>`;
   filterHtml+=`<div class="chip${fil==='all'?' on':''}" onclick="setFilter('all')">All Days</div>`;
   STATE.days.sort((a,b)=>b.date.localeCompare(a.date)).forEach(d=>{
-    const isToday=d.date===today;
-    if(!isToday){
+    if(d.date!==today)
       filterHtml+=`<div class="chip${fil===d.date?' on':''}" onclick="setFilter('${d.date}')">${formatDateShort(d.date)}</div>`;
-    }
   });
   fc.innerHTML=filterHtml;
 
-  // Rank table FIRST
   const sorted=AGENTS.map(a=>({name:a,...agg[a]})).sort((a,b)=>b.total-a.total);
-  const maxT=sorted[0]?.total||1;
+
+  /* ── ONLY show agents with total > 0 in rankings ── */
+  const activeRanked=sorted.filter(a=>a.total>0);
+  const maxT=activeRanked[0]?.total||1;
+
   const thead=document.querySelector('#rankTable thead');
   const tbody=document.querySelector('#rankTable tbody');
   thead.innerHTML=`<tr><th>Rank</th><th>Agent</th><th>💬 Chats</th><th>📞 Calls</th><th>📧 Emails</th><th>📢 Channels</th><th>Total</th><th>Performance</th></tr>`;
   tbody.innerHTML='';
-  sorted.forEach((a,i)=>{
-    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    const pct=maxT?Math.round(a.total/maxT*100):0;
-    const barColor=i<3?'var(--gold)':i<10?'var(--accent)':'var(--muted)';
-    tbody.innerHTML+=`<tr>
-      <td class="rank-cell">${medal||i+1}</td>
-      <td><div class="agent-cell"><div class="ava" style="background:${avaColor(a.name)}">${ini(a.name)}</div><strong>${a.name}</strong></div></td>
-      <td style="text-align:center">${a.chats}</td>
-      <td style="text-align:center">${a.calls}</td>
-      <td style="text-align:center">${a.emails}</td>
-      <td style="text-align:center">${a.channels}</td>
-      <td style="text-align:center;font-weight:800;color:var(--accent2)">${a.total}</td>
-      <td class="bar-cell"><div style="font-size:11px;font-weight:700;color:var(--muted)">${pct}%</div><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div></td>
-    </tr>`;
-  });
 
-  // KPIs BELOW RANKINGS
+  if(activeRanked.length===0){
+    tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);font-size:14px">📭 No agents with data for this period. Add entries in the Data Entry tab.</td></tr>`;
+  } else {
+    activeRanked.forEach((a,i)=>{
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      const pct=maxT?Math.round(a.total/maxT*100):0;
+      const barColor=i<3?'var(--gold)':i<10?'var(--accent)':'var(--muted)';
+      tbody.innerHTML+=`<tr>
+        <td class="rank-cell">${medal||i+1}</td>
+        <td><div class="agent-cell"><div class="ava" style="background:${avaColor(a.name)}">${ini(a.name)}</div><strong>${a.name}</strong></div></td>
+        <td style="text-align:center">${a.chats}</td>
+        <td style="text-align:center">${a.calls}</td>
+        <td style="text-align:center">${a.emails}</td>
+        <td style="text-align:center">${a.channels}</td>
+        <td style="text-align:center;font-weight:800;color:var(--accent2)">${a.total}</td>
+        <td class="bar-cell"><div style="font-size:11px;font-weight:700;color:var(--muted)">${pct}%</div><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div></td>
+      </tr>`;
+    });
+  }
+
   const activeAgents=AGENTS.filter(a=>agg[a].total>0).length;
   document.getElementById('kpis').innerHTML=`
     <div class="kpi total"><div class="lbl">Total Interactions</div><div class="num">${totals.total.toLocaleString()}</div></div>
@@ -420,14 +947,12 @@ function renderCharts(totals,sorted,agg){
   Object.values(charts).forEach(c=>{if(c)c.destroy()});
   const dOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6e7590',font:{size:11}}}}};
 
-  // Category doughnut
   const ctx1=document.getElementById('chartCat').getContext('2d');
   charts.cat=new Chart(ctx1,{type:'doughnut',data:{
     labels:CATS.map(c=>CAT_META[c].label),
     datasets:[{data:CATS.map(c=>totals[c]),backgroundColor:CATS.map(c=>CAT_META[c].color),borderWidth:0}]
   },options:{...dOpts,cutout:'60%'}});
 
-  // Top 10 bar
   const top10=sorted.filter(a=>a.total>0).slice(0,10);
   const ctx2=document.getElementById('chartTop').getContext('2d');
   charts.top=new Chart(ctx2,{type:'bar',data:{
@@ -435,7 +960,6 @@ function renderCharts(totals,sorted,agg){
     datasets:[{label:'Total',data:top10.map(a=>a.total),backgroundColor:'rgba(124,108,240,.7)',borderRadius:6}]
   },options:{...dOpts,indexAxis:'y',scales:{x:{ticks:{color:'#6e7590'},grid:{color:'#1e2235'}},y:{ticks:{color:'#e4e7f1',font:{size:11}},grid:{display:false}}}}});
 
-  // Daily trend
   const dSorted=[...STATE.days].sort((a,b)=>a.date.localeCompare(b.date));
   const ctx3=document.getElementById('chartTrend').getContext('2d');
   charts.trend=new Chart(ctx3,{type:'line',data:{
@@ -447,7 +971,6 @@ function renderCharts(totals,sorted,agg){
     }))
   },options:{...dOpts,scales:{x:{ticks:{color:'#6e7590'},grid:{color:'#1e2235'}},y:{ticks:{color:'#6e7590'},grid:{color:'#1e2235'}}}}});
 
-  // Stacked per agent
   const active=sorted.filter(a=>a.total>0).slice(0,15);
   const ctx4=document.getElementById('chartStack').getContext('2d');
   charts.stack=new Chart(ctx4,{type:'bar',data:{
@@ -461,16 +984,9 @@ function renderCharts(totals,sorted,agg){
 
 /* ═══════════ INIT ═══════════ */
 load();
-
-// Auto-select today on load
 const today=getTodayStr();
 const todayExists=STATE.days.find(d=>d.date===today);
-if(todayExists){
-  STATE.activeDay=today;
-  STATE.dashFilter='today';
-  save();
-}
-
+if(todayExists){STATE.activeDay=today;STATE.dashFilter='today';save()}
 renderDashboard();
 </script>
 </body>
