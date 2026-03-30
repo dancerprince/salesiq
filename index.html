@@ -53,11 +53,12 @@ tr:hover td{background:rgba(124,108,240,.04)}
 .bar-fill{height:100%;border-radius:4px;transition:width .4s}
 
 .de-layout{display:flex;gap:18px;min-height:calc(100vh - 104px)}
-.de-sidebar{width:220px;flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 104px);overflow-y:auto}
+.de-sidebar{width:240px;flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 104px);overflow-y:auto}
 .de-main{flex:1;overflow:auto}
 .wk-item{padding:10px 12px;border-radius:var(--rs);font-size:13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:.15s;border:1px solid transparent}
 .wk-item:hover{background:var(--card2)}.wk-item.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent2)}
 .wk-badge{font-size:10px;background:var(--surface);padding:2px 8px;border-radius:10px;color:var(--muted);font-weight:700}
+.wk-today{font-size:9px;background:var(--green);color:#000;padding:1px 6px;border-radius:8px;font-weight:800;margin-left:6px}
 
 .add-wk{background:var(--card2);border:1px dashed var(--border);border-radius:var(--rs);padding:12px;margin-top:4px}
 .add-wk input{width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;margin-bottom:6px;outline:0}
@@ -93,32 +94,38 @@ tr:hover td{background:rgba(124,108,240,.04)}
 
 <!-- DASHBOARD -->
 <div id="pg-dashboard" class="page on">
-  <div class="filters" id="weekFilters"></div>
+  <div class="filters" id="dayFilters"></div>
+
+  <!-- RANKINGS FIRST -->
+  <h3 style="margin-bottom:12px;font-size:15px">🏆 Agent Rankings</h3>
+  <div class="tbl-wrap"><table id="rankTable"><thead></thead><tbody></tbody></table></div>
+
+  <!-- KPIs BELOW RANKINGS -->
   <div class="kpis" id="kpis"></div>
+
+  <!-- CHARTS AT BOTTOM -->
   <div class="charts">
     <div class="chart-box"><h3>📊 Category Breakdown</h3><canvas id="chartCat"></canvas></div>
     <div class="chart-box"><h3>🏆 Top 10 Agents</h3><canvas id="chartTop"></canvas></div>
-    <div class="chart-box"><h3>📈 Weekly Trend</h3><canvas id="chartTrend"></canvas></div>
+    <div class="chart-box"><h3>📈 Daily Trend</h3><canvas id="chartTrend"></canvas></div>
     <div class="chart-box"><h3>📋 Category per Agent</h3><canvas id="chartStack"></canvas></div>
   </div>
-  <h3 style="margin-bottom:12px;font-size:15px">🏆 Agent Rankings</h3>
-  <div class="tbl-wrap"><table id="rankTable"><thead></thead><tbody></tbody></table></div>
 </div>
 
 <!-- DATA ENTRY -->
 <div id="pg-data" class="page">
   <div class="de-layout">
     <div class="de-sidebar">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:4px">📅 WEEKS</div>
-      <div id="weekList"></div>
+      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:4px">📅 DAILY ENTRIES</div>
+      <div id="dayList"></div>
       <div class="add-wk">
-        <input id="wkNum" type="number" placeholder="Week number" min="1">
-        <input id="wkLabel" type="text" placeholder="Label (e.g. 31 Mar - 4 Apr)">
-        <button class="btn btn-o" style="width:100%;justify-content:center" onclick="addWeek()">➕ Add Week</button>
+        <input id="dayDate" type="date">
+        <button class="btn btn-o" style="width:100%;justify-content:center" onclick="addDay()">➕ Add Day</button>
+        <button class="btn btn-p" style="width:100%;justify-content:center;margin-top:6px" onclick="addToday()">📌 Add Today</button>
       </div>
     </div>
     <div class="de-main" id="deMain">
-      <div class="empty-state"><em>📅</em><p>Add a week from the sidebar to start entering data</p></div>
+      <div class="empty-state"><em>📅</em><p>Add a day from the sidebar to start entering data</p></div>
     </div>
   </div>
 </div>
@@ -146,9 +153,28 @@ const AVATARS=['#6c5ce7','#00cec9','#e17055','#00b894','#fdcb6e','#fd79a8','#74b
 function avaColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return AVATARS[Math.abs(h)%AVATARS.length]}
 function ini(n){const p=n.trim().split(/[\s.]+/);return p.length>1?(p[0][0]+p[p.length-1][0]).toUpperCase():n.substring(0,2).toUpperCase()}
 
-/* ═══════════ STATE — CLEAN START ═══════════ */
-const STORAGE_KEY = 'agt_tracker_v3';
-let STATE = {weeks:[], activeWeek:null, dashFilter:'all'};
+/* ═══════════ HELPERS ═══════════ */
+function getTodayStr(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function formatDate(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return days[d.getDay()]+', '+d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
+}
+
+function formatDateShort(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return d.getDate()+' '+months[d.getMonth()];
+}
+
+/* ═══════════ STATE ═══════════ */
+const STORAGE_KEY = 'agt_tracker_v4_daily';
+let STATE = {days:[], activeDay:null, dashFilter:'today'};
 
 function save(){localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE))}
 function load(){
@@ -157,17 +183,12 @@ function load(){
     if(raw) {
       STATE = JSON.parse(raw);
     } else {
-      STATE = {weeks:[], activeWeek:null, dashFilter:'all'};
+      STATE = {days:[], activeDay:null, dashFilter:'today'};
     }
   } catch(e) {
-    STATE = {weeks:[], activeWeek:null, dashFilter:'all'};
+    STATE = {days:[], activeDay:null, dashFilter:'today'};
   }
 }
-
-// WIPE old data keys from previous versions
-localStorage.removeItem('agt_v2');
-localStorage.removeItem('agt_v1');
-localStorage.removeItem('agentTracker');
 
 /* ═══════════ TOAST ═══════════ */
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
@@ -184,34 +205,51 @@ function showPage(p){
 
 /* ═══════════ DATA ENTRY ═══════════ */
 function renderDataEntry(){
-  const wl=document.getElementById('weekList');
-  wl.innerHTML='';
-  STATE.weeks.sort((a,b)=>a.num-b.num).forEach(w=>{
-    const tot=Object.values(w.agents).reduce((s,a)=>s+a.chats+a.calls+a.emails+a.channels,0);
-    const d=document.createElement('div');
-    d.className='wk-item'+(STATE.activeWeek===w.num?' on':'');
-    d.innerHTML=`<span>Week ${w.num}${w.label?' · '+w.label:''}</span><span class="wk-badge">${tot}</span>`;
-    d.onclick=()=>{STATE.activeWeek=w.num;save();renderDataEntry()};
-    wl.appendChild(d);
+  const dl=document.getElementById('dayList');
+  dl.innerHTML='';
+  const today=getTodayStr();
+
+  // Sort days descending (newest first)
+  STATE.days.sort((a,b)=>b.date.localeCompare(a.date));
+
+  // Auto-select today if it exists and nothing is active
+  if(!STATE.activeDay){
+    const todayEntry=STATE.days.find(d=>d.date===today);
+    if(todayEntry) STATE.activeDay=today;
+    else if(STATE.days.length) STATE.activeDay=STATE.days[0].date;
+  }
+
+  STATE.days.forEach(d=>{
+    const tot=Object.values(d.agents).reduce((s,a)=>s+a.chats+a.calls+a.emails+a.channels,0);
+    const isToday=d.date===today;
+    const el=document.createElement('div');
+    el.className='wk-item'+(STATE.activeDay===d.date?' on':'');
+    el.innerHTML=`<span>${formatDateShort(d.date)}${isToday?'<span class="wk-today">TODAY</span>':''}</span><span class="wk-badge">${tot}</span>`;
+    el.onclick=()=>{STATE.activeDay=d.date;save();renderDataEntry()};
+    dl.appendChild(el);
   });
-  const suggest=STATE.weeks.length?Math.max(...STATE.weeks.map(w=>w.num))+1:1;
-  document.getElementById('wkNum').placeholder='Week # (next: '+suggest+')';
+
+  // Set default date input to today
+  document.getElementById('dayDate').value=today;
 
   const main=document.getElementById('deMain');
-  const wk=STATE.weeks.find(w=>w.num===STATE.activeWeek);
-  if(!wk){main.innerHTML='<div class="empty-state"><em>📅</em><p>Add a week or select one from the sidebar to start entering data</p></div>';return}
+  const day=STATE.days.find(d=>d.date===STATE.activeDay);
+  if(!day){main.innerHTML='<div class="empty-state"><em>📅</em><p>Add a day or click "Add Today" to start entering data</p></div>';return}
+
+  const isToday=day.date===today;
+  const dateLabel=formatDate(day.date)+(isToday?' — 📌 TODAY':'');
 
   let html=`<div class="de-actions">
-    <span style="font-size:15px;font-weight:700;flex:1">📝 Week ${wk.num}${wk.label?' — '+wk.label:''}</span>
+    <span style="font-size:15px;font-weight:700;flex:1">📝 ${dateLabel}</span>
     <button class="btn btn-g" onclick="saveData()">💾 Save All</button>
-    <button class="btn btn-r" onclick="delWeek(${wk.num})">🗑️ Delete</button>
+    <button class="btn btn-r" onclick="delDay('${day.date}')">🗑️ Delete</button>
   </div>
   <div class="tbl-wrap"><table class="de-table"><thead><tr>
     <th>#</th><th>Agent</th><th>💬 Chats</th><th>📞 Calls</th><th>📧 Emails</th><th>📢 Channels</th><th>Total</th>
   </tr></thead><tbody>`;
 
   AGENTS.forEach((ag,i)=>{
-    const d=wk.agents[ag]||{chats:0,calls:0,emails:0,channels:0};
+    const d=day.agents[ag]||{chats:0,calls:0,emails:0,channels:0};
     const t=d.chats+d.calls+d.emails+d.channels;
     html+=`<tr>
       <td style="color:var(--muted);font-weight:600">${i+1}</td>
@@ -225,7 +263,7 @@ function renderDataEntry(){
   });
 
   const sums={chats:0,calls:0,emails:0,channels:0,total:0};
-  AGENTS.forEach(ag=>{const d=wk.agents[ag]||{chats:0,calls:0,emails:0,channels:0};CATS.forEach(c=>sums[c]+=d[c]);sums.total+=d.chats+d.calls+d.emails+d.channels});
+  AGENTS.forEach(ag=>{const d=day.agents[ag]||{chats:0,calls:0,emails:0,channels:0};CATS.forEach(c=>sums[c]+=d[c]);sums.total+=d.chats+d.calls+d.emails+d.channels});
   html+=`</tbody><tfoot><tr>
     <td></td><td style="font-weight:800">TOTALS</td>
     <td style="text-align:center;color:var(--accent2)" id="ft-chats">${sums.chats}</td>
@@ -253,47 +291,72 @@ function liveTotal(el){
 }
 
 function saveData(){
-  const wk=STATE.weeks.find(w=>w.num===STATE.activeWeek);
-  if(!wk)return;
+  const day=STATE.days.find(d=>d.date===STATE.activeDay);
+  if(!day)return;
   document.querySelectorAll('.de-table tbody input[type=number]').forEach(inp=>{
     const ag=inp.dataset.agent,cat=inp.dataset.cat;
-    if(!wk.agents[ag])wk.agents[ag]={chats:0,calls:0,emails:0,channels:0};
-    wk.agents[ag][cat]=parseInt(inp.value)||0;
+    if(!day.agents[ag])day.agents[ag]={chats:0,calls:0,emails:0,channels:0};
+    day.agents[ag][cat]=parseInt(inp.value)||0;
   });
-  save();renderDataEntry();toast('✅ Week '+wk.num+' saved!');
+  save();renderDataEntry();toast('✅ '+formatDate(day.date)+' saved!');
 }
 
-function addWeek(){
-  const num=parseInt(document.getElementById('wkNum').value);
-  const label=document.getElementById('wkLabel').value.trim();
-  if(!num||num<1){toast('⚠️ Enter a valid week number');return}
-  if(STATE.weeks.find(w=>w.num===num)){toast('⚠️ Week '+num+' already exists');return}
+function addDay(){
+  const dateVal=document.getElementById('dayDate').value;
+  if(!dateVal){toast('⚠️ Please select a date');return}
+  if(STATE.days.find(d=>d.date===dateVal)){toast('⚠️ '+formatDate(dateVal)+' already exists');return}
   const agents={};AGENTS.forEach(a=>agents[a]={chats:0,calls:0,emails:0,channels:0});
-  STATE.weeks.push({num,label,agents});
-  STATE.activeWeek=num;
-  document.getElementById('wkNum').value='';
-  document.getElementById('wkLabel').value='';
-  save();renderDataEntry();toast('✅ Week '+num+' added!');
+  STATE.days.push({date:dateVal,agents});
+  STATE.activeDay=dateVal;
+  save();renderDataEntry();toast('✅ '+formatDate(dateVal)+' added!');
 }
 
-function delWeek(num){
-  if(!confirm('Delete Week '+num+'? This cannot be undone.'))return;
-  STATE.weeks=STATE.weeks.filter(w=>w.num!==num);
-  if(STATE.activeWeek===num)STATE.activeWeek=STATE.weeks.length?STATE.weeks[0].num:null;
-  save();renderDataEntry();toast('🗑️ Week '+num+' deleted');
+function addToday(){
+  const today=getTodayStr();
+  if(STATE.days.find(d=>d.date===today)){
+    // Already exists, just select it
+    STATE.activeDay=today;
+    save();renderDataEntry();toast('📌 Switched to today');
+    return;
+  }
+  const agents={};AGENTS.forEach(a=>agents[a]={chats:0,calls:0,emails:0,channels:0});
+  STATE.days.push({date:today,agents});
+  STATE.activeDay=today;
+  save();renderDataEntry();toast('✅ Today\'s entry created!');
+}
+
+function delDay(date){
+  if(!confirm('Delete '+formatDate(date)+'? This cannot be undone.'))return;
+  STATE.days=STATE.days.filter(d=>d.date!==date);
+  if(STATE.activeDay===date){
+    const today=getTodayStr();
+    const todayEntry=STATE.days.find(d=>d.date===today);
+    STATE.activeDay=todayEntry?today:(STATE.days.length?STATE.days[0].date:null);
+  }
+  save();renderDataEntry();toast('🗑️ Entry deleted');
 }
 
 /* ═══════════ DASHBOARD ═══════════ */
 let charts={};
 function renderDashboard(){
-  const fil=STATE.dashFilter||'all';
-  const weeks=fil==='all'?STATE.weeks:STATE.weeks.filter(w=>w.num===parseInt(fil));
+  const fil=STATE.dashFilter||'today';
+  const today=getTodayStr();
+  let filteredDays;
+
+  if(fil==='today'){
+    // "Today" filter — show today's data (which is always the current day's entry)
+    filteredDays=STATE.days.filter(d=>d.date===today);
+  } else if(fil==='all'){
+    filteredDays=STATE.days;
+  } else {
+    filteredDays=STATE.days.filter(d=>d.date===fil);
+  }
 
   const agg={};
   AGENTS.forEach(a=>agg[a]={chats:0,calls:0,emails:0,channels:0,total:0});
-  weeks.forEach(w=>{
+  filteredDays.forEach(day=>{
     AGENTS.forEach(a=>{
-      const d=w.agents[a]||{chats:0,calls:0,emails:0,channels:0};
+      const d=day.agents[a]||{chats:0,calls:0,emails:0,channels:0};
       CATS.forEach(c=>agg[a][c]+=d[c]);
       agg[a].total+=d.chats+d.calls+d.emails+d.channels;
     });
@@ -302,24 +365,20 @@ function renderDashboard(){
   const totals={chats:0,calls:0,emails:0,channels:0,total:0};
   AGENTS.forEach(a=>{CATS.forEach(c=>totals[c]+=agg[a][c]);totals.total+=agg[a].total});
 
-  // Week filters
-  const fc=document.getElementById('weekFilters');
-  fc.innerHTML='<div class="chip'+(fil==='all'?' on':'')+'" onclick="setFilter(\'all\')">All Weeks</div>';
-  STATE.weeks.sort((a,b)=>a.num-b.num).forEach(w=>{
-    fc.innerHTML+=`<div class="chip${fil==w.num?' on':''}" onclick="setFilter(${w.num})">Week ${w.num}</div>`;
+  // Day filters
+  const fc=document.getElementById('dayFilters');
+  let filterHtml='';
+  filterHtml+=`<div class="chip${fil==='today'?' on':''}" onclick="setFilter('today')">📌 Today</div>`;
+  filterHtml+=`<div class="chip${fil==='all'?' on':''}" onclick="setFilter('all')">All Days</div>`;
+  STATE.days.sort((a,b)=>b.date.localeCompare(a.date)).forEach(d=>{
+    const isToday=d.date===today;
+    if(!isToday){
+      filterHtml+=`<div class="chip${fil===d.date?' on':''}" onclick="setFilter('${d.date}')">${formatDateShort(d.date)}</div>`;
+    }
   });
+  fc.innerHTML=filterHtml;
 
-  // KPIs
-  const activeAgents=AGENTS.filter(a=>agg[a].total>0).length;
-  document.getElementById('kpis').innerHTML=`
-    <div class="kpi total"><div class="lbl">Total Interactions</div><div class="num">${totals.total.toLocaleString()}</div></div>
-    <div class="kpi chats"><div class="lbl">💬 Total Chats</div><div class="num">${totals.chats.toLocaleString()}</div></div>
-    <div class="kpi calls"><div class="lbl">📞 Total Calls</div><div class="num">${totals.calls.toLocaleString()}</div></div>
-    <div class="kpi emails"><div class="lbl">📧 Total Emails</div><div class="num">${totals.emails.toLocaleString()}</div></div>
-    <div class="kpi channels"><div class="lbl">📢 Channel Queries</div><div class="num">${totals.channels.toLocaleString()}</div></div>
-    <div class="kpi agents"><div class="lbl">Active Agents</div><div class="num">${activeAgents}</div></div>`;
-
-  // Rank table
+  // Rank table FIRST
   const sorted=AGENTS.map(a=>({name:a,...agg[a]})).sort((a,b)=>b.total-a.total);
   const maxT=sorted[0]?.total||1;
   const thead=document.querySelector('#rankTable thead');
@@ -341,6 +400,16 @@ function renderDashboard(){
       <td class="bar-cell"><div style="font-size:11px;font-weight:700;color:var(--muted)">${pct}%</div><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div></td>
     </tr>`;
   });
+
+  // KPIs BELOW RANKINGS
+  const activeAgents=AGENTS.filter(a=>agg[a].total>0).length;
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi total"><div class="lbl">Total Interactions</div><div class="num">${totals.total.toLocaleString()}</div></div>
+    <div class="kpi chats"><div class="lbl">💬 Total Chats</div><div class="num">${totals.chats.toLocaleString()}</div></div>
+    <div class="kpi calls"><div class="lbl">📞 Total Calls</div><div class="num">${totals.calls.toLocaleString()}</div></div>
+    <div class="kpi emails"><div class="lbl">📧 Total Emails</div><div class="num">${totals.emails.toLocaleString()}</div></div>
+    <div class="kpi channels"><div class="lbl">📢 Channel Queries</div><div class="num">${totals.channels.toLocaleString()}</div></div>
+    <div class="kpi agents"><div class="lbl">Active Agents</div><div class="num">${activeAgents}</div></div>`;
 
   renderCharts(totals,sorted,agg);
 }
@@ -366,14 +435,14 @@ function renderCharts(totals,sorted,agg){
     datasets:[{label:'Total',data:top10.map(a=>a.total),backgroundColor:'rgba(124,108,240,.7)',borderRadius:6}]
   },options:{...dOpts,indexAxis:'y',scales:{x:{ticks:{color:'#6e7590'},grid:{color:'#1e2235'}},y:{ticks:{color:'#e4e7f1',font:{size:11}},grid:{display:false}}}}});
 
-  // Weekly trend
-  const wSorted=[...STATE.weeks].sort((a,b)=>a.num-b.num);
+  // Daily trend
+  const dSorted=[...STATE.days].sort((a,b)=>a.date.localeCompare(b.date));
   const ctx3=document.getElementById('chartTrend').getContext('2d');
   charts.trend=new Chart(ctx3,{type:'line',data:{
-    labels:wSorted.map(w=>'W'+w.num),
+    labels:dSorted.map(d=>formatDateShort(d.date)),
     datasets:CATS.map(c=>({
       label:CAT_META[c].label,borderColor:CAT_META[c].color,backgroundColor:CAT_META[c].color+'33',
-      data:wSorted.map(w=>AGENTS.reduce((s,a)=>(w.agents[a]?.[c]||0)+s,0)),
+      data:dSorted.map(day=>AGENTS.reduce((s,a)=>(day.agents[a]?.[c]||0)+s,0)),
       tension:.4,fill:false,pointRadius:4
     }))
   },options:{...dOpts,scales:{x:{ticks:{color:'#6e7590'},grid:{color:'#1e2235'}},y:{ticks:{color:'#6e7590'},grid:{color:'#1e2235'}}}}});
@@ -390,8 +459,18 @@ function renderCharts(totals,sorted,agg){
   },options:{...dOpts,scales:{x:{stacked:true,ticks:{color:'#e4e7f1',font:{size:10},maxRotation:45},grid:{display:false}},y:{stacked:true,ticks:{color:'#6e7590'},grid:{color:'#1e2235'}}}}});
 }
 
-/* ═══════════ INIT — FRESH START ═══════════ */
+/* ═══════════ INIT ═══════════ */
 load();
+
+// Auto-select today on load
+const today=getTodayStr();
+const todayExists=STATE.days.find(d=>d.date===today);
+if(todayExists){
+  STATE.activeDay=today;
+  STATE.dashFilter='today';
+  save();
+}
+
 renderDashboard();
 </script>
 </body>
