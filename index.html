@@ -31,7 +31,7 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);co
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center}
 .kpi .num{font-size:28px;font-weight:800;margin:6px 0 2px}.kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
-.kpi.chats .num{color:var(--accent2)}.kpi.calls .num{color:var(--cyan)}.kpi.emails .num{color:var(--green)}.kpi.channels .num{color:var(--orange)}.kpi.total .num{color:var(--pink)}.kpi.agents .num{color:var(--blue)}
+.kpi.chats .num{color:var(--accent2)}.kpi.meetings .num{color:var(--cyan)}.kpi.emails .num{color:var(--green)}.kpi.calls .num{color:var(--orange)}.kpi.total .num{color:var(--pink)}.kpi.agents .num{color:var(--blue)}
 
 .filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
 .chip{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:.15s}
@@ -233,7 +233,9 @@ tr:hover td{background:rgba(124,108,240,.04)}
     <div class="modal-body" id="ocrModalBody">
       <!-- Step 1: Upload -->
       <div id="ocrStep1">
-        <div class="info-box">📌 Upload a screenshot or photo of your agent performance table. The system will read column headers & match agent names using <strong>contains</strong> matching. You can manually review & edit everything before applying.</div>
+        <div class="info-box">📌 Upload a screenshot of your agent performance table.<br>
+        <strong>Expected columns:</strong> A=Agent Name, B=Chats, C=Email Response, D=Meetings, E=Incoming Calls<br>
+        Column headers are matched using <strong>contains</strong>. Agent names are matched using <strong>contains</strong>. You can manually review & edit everything before applying.</div>
         <div class="ocr-date-picker">
           <label>📅 Import to date:</label>
           <input type="date" id="ocrTargetDate" onchange="updateOcrDateHint()">
@@ -302,12 +304,18 @@ const AGENTS=[
   "Caitlin","Anand","Prasanth"
 ].sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
 
-const CATS=['chats','calls','emails','channels'];
+/* ═══════════ CATEGORIES ═══════════
+   B = Chats       → chats
+   C = Email Resp   → emails
+   D = Meetings    → meetings
+   E = Incoming Calls → calls
+═══════════════════════════════════ */
+const CATS=['chats','emails','meetings','calls'];
 const CAT_META={
-  chats:{icon:'💬',label:'Chats',color:'#7c6cf0'},
-  calls:{icon:'📞',label:'Calls / Meetings',color:'#22d3ee'},
-  emails:{icon:'📧',label:'Emails',color:'#34d399'},
-  channels:{icon:'📢',label:'Channel Queries',color:'#fbbf24'}
+  chats:    {icon:'💬', label:'Chats',          color:'#7c6cf0'},
+  emails:   {icon:'�', label:'Email Response',  color:'#34d399'},
+  meetings: {icon:'🤝', label:'Meetings',        color:'#22d3ee'},
+  calls:    {icon:'�', label:'Incoming Calls',   color:'#fbbf24'}
 };
 const AVATARS=['#6c5ce7','#00cec9','#e17055','#00b894','#fdcb6e','#fd79a8','#74b9ff','#a29bfe','#55efc4','#fab1a0','#81ecec','#636e72','#ff7675','#ffeaa7','#0984e3','#d63031'];
 function avaColor(n){let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return AVATARS[Math.abs(h)%AVATARS.length]}
@@ -331,7 +339,7 @@ function formatDateShort(dateStr){
 }
 
 /* ═══════════ STATE ═══════════ */
-const STORAGE_KEY='agt_tracker_v4_daily';
+const STORAGE_KEY='agt_tracker_v5_daily';
 let STATE={days:[],activeDay:null,dashFilter:'today'};
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(STATE))}
 function load(){
@@ -371,7 +379,7 @@ function renderDataEntry(){
     else if(STATE.days.length) STATE.activeDay=STATE.days[0].date;
   }
   STATE.days.forEach(d=>{
-    const tot=Object.values(d.agents).reduce((s,a)=>s+a.chats+a.calls+a.emails+a.channels,0);
+    const tot=Object.values(d.agents).reduce((s,a)=>s+a.chats+a.meetings+a.emails+a.calls,0);
     const isToday=d.date===today;
     const el=document.createElement('div');
     el.className='wk-item'+(STATE.activeDay===d.date?' on':'');
@@ -393,31 +401,31 @@ function renderDataEntry(){
     <button class="btn btn-r" onclick="delDay('${day.date}')">🗑️ Delete</button>
   </div>
   <div class="tbl-wrap"><table class="de-table"><thead><tr>
-    <th>#</th><th>Agent</th><th>💬 Chats</th><th>📞 Calls</th><th>📧 Emails</th><th>📢 Channels</th><th>Total</th>
+    <th>#</th><th>Agent</th><th>💬 Chats</th><th>� Email Resp</th><th>🤝 Meetings</th><th>� Calls</th><th>Total</th>
   </tr></thead><tbody>`;
 
   AGENTS.forEach((ag,i)=>{
-    const d=day.agents[ag]||{chats:0,calls:0,emails:0,channels:0};
-    const t=d.chats+d.calls+d.emails+d.channels;
+    const d=day.agents[ag]||{chats:0,emails:0,meetings:0,calls:0};
+    const t=d.chats+d.emails+d.meetings+d.calls;
     html+=`<tr id="agent-row-${i}">
       <td style="color:var(--muted);font-weight:600">${i+1}</td>
       <td class="agent-name"><div class="agent-cell"><div class="ava" style="background:${avaColor(ag)}">${ini(ag)}</div>${ag}</div></td>
       <td><input type="number" min="0" data-agent="${ag}" data-cat="chats" value="${d.chats}" oninput="liveTotal(this)"></td>
-      <td><input type="number" min="0" data-agent="${ag}" data-cat="calls" value="${d.calls}" oninput="liveTotal(this)"></td>
       <td><input type="number" min="0" data-agent="${ag}" data-cat="emails" value="${d.emails}" oninput="liveTotal(this)"></td>
-      <td><input type="number" min="0" data-agent="${ag}" data-cat="channels" value="${d.channels}" oninput="liveTotal(this)"></td>
+      <td><input type="number" min="0" data-agent="${ag}" data-cat="meetings" value="${d.meetings}" oninput="liveTotal(this)"></td>
+      <td><input type="number" min="0" data-agent="${ag}" data-cat="calls" value="${d.calls}" oninput="liveTotal(this)"></td>
       <td class="total-cell" id="rt-${i}">${t}</td>
     </tr>`;
   });
 
-  const sums={chats:0,calls:0,emails:0,channels:0,total:0};
-  AGENTS.forEach(ag=>{const d=day.agents[ag]||{chats:0,calls:0,emails:0,channels:0};CATS.forEach(c=>sums[c]+=d[c]);sums.total+=d.chats+d.calls+d.emails+d.channels});
+  const sums={chats:0,emails:0,meetings:0,calls:0,total:0};
+  AGENTS.forEach(ag=>{const d=day.agents[ag]||{chats:0,emails:0,meetings:0,calls:0};CATS.forEach(c=>sums[c]+=d[c]);sums.total+=d.chats+d.emails+d.meetings+d.calls});
   html+=`</tbody><tfoot><tr>
     <td></td><td style="font-weight:800">TOTALS</td>
     <td style="text-align:center;color:var(--accent2)" id="ft-chats">${sums.chats}</td>
-    <td style="text-align:center;color:var(--cyan)" id="ft-calls">${sums.calls}</td>
     <td style="text-align:center;color:var(--green)" id="ft-emails">${sums.emails}</td>
-    <td style="text-align:center;color:var(--orange)" id="ft-channels">${sums.channels}</td>
+    <td style="text-align:center;color:var(--cyan)" id="ft-meetings">${sums.meetings}</td>
+    <td style="text-align:center;color:var(--orange)" id="ft-calls">${sums.calls}</td>
     <td class="total-cell" id="ft-total">${sums.total}</td>
   </tr></tfoot></table></div>`;
   main.innerHTML=html;
@@ -429,7 +437,7 @@ function liveTotal(el){
   let s=0;inputs.forEach(i=>s+=parseInt(i.value)||0);
   const idx=row.rowIndex-1;
   document.getElementById('rt-'+idx).textContent=s;
-  let ft={chats:0,calls:0,emails:0,channels:0,total:0};
+  let ft={chats:0,emails:0,meetings:0,calls:0,total:0};
   document.querySelectorAll('.de-table tbody input[type=number]').forEach(inp=>{
     const v=parseInt(inp.value)||0;ft[inp.dataset.cat]+=v;ft.total+=v;
   });
@@ -442,7 +450,7 @@ function saveData(){
   if(!day)return;
   document.querySelectorAll('.de-table tbody input[type=number]').forEach(inp=>{
     const ag=inp.dataset.agent,cat=inp.dataset.cat;
-    if(!day.agents[ag])day.agents[ag]={chats:0,calls:0,emails:0,channels:0};
+    if(!day.agents[ag])day.agents[ag]={chats:0,emails:0,meetings:0,calls:0};
     day.agents[ag][cat]=parseInt(inp.value)||0;
   });
   save();renderDataEntry();toast('✅ '+formatDate(day.date)+' saved!');
@@ -452,7 +460,7 @@ function addDay(){
   const dateVal=document.getElementById('dayDate').value;
   if(!dateVal){toast('⚠️ Please select a date','#f87171');return}
   if(STATE.days.find(d=>d.date===dateVal)){toast('⚠️ '+formatDate(dateVal)+' already exists','#fbbf24');return}
-  const agents={};AGENTS.forEach(a=>agents[a]={chats:0,calls:0,emails:0,channels:0});
+  const agents={};AGENTS.forEach(a=>agents[a]={chats:0,emails:0,meetings:0,calls:0});
   STATE.days.push({date:dateVal,agents});
   STATE.activeDay=dateVal;
   save();renderDataEntry();toast('✅ '+formatDate(dateVal)+' added!');
@@ -463,7 +471,7 @@ function addToday(){
   if(STATE.days.find(d=>d.date===today)){
     STATE.activeDay=today;save();renderDataEntry();toast('📌 Switched to today');return;
   }
-  const agents={};AGENTS.forEach(a=>agents[a]={chats:0,calls:0,emails:0,channels:0});
+  const agents={};AGENTS.forEach(a=>agents[a]={chats:0,emails:0,meetings:0,calls:0});
   STATE.days.push({date:today,agents});
   STATE.activeDay=today;
   save();renderDataEntry();toast("✅ Today's entry created!");
@@ -481,17 +489,23 @@ function delDay(date){
 }
 
 /* ═══════════════════════════════════════════
-   OCR / IMAGE IMPORT SYSTEM  (v4 — fully editable)
+   OCR / IMAGE IMPORT SYSTEM  (v5)
+   Column A = Agent Name (contains match)
+   Column B = Chats
+   Column C = Email Response
+   Column D = Meetings
+   Column E = Incoming Calls
 ═══════════════════════════════════════════ */
 
-let _ocrParsed=[];     // Array of {rawName, matchedAgent, matchQuality, matchScore, chats, calls, emails, channels, include}
-let _ocrHeaders=[];    // Detected column headers from image
+let _ocrParsed=[];
+let _ocrHeaders=[];
 let _ocrImageUrl='';
-let _lastRawRows=[];   // Raw parsed rows [{rawName, nums}]
+let _lastRawRows=[];
 let _lastRawText='';
 let _headerMapLog=[];
+let _originalValues=[]; // Store original OCR values to detect user edits
 
-/* ── Fuzzy string match (Levenshtein ratio) ── */
+/* ── Levenshtein distance ── */
 function levenshtein(a,b){
   a=a.toLowerCase().trim();b=b.toLowerCase().trim();
   const m=a.length,n=b.length;
@@ -507,132 +521,152 @@ function similarity(a,b){
 }
 
 /* ════════════════════════════════════════════════
-   AGENT NAME MATCHING — uses CONTAINS as primary
+   AGENT NAME MATCHING — CONTAINS as PRIMARY
+   "Navaneeth" → "navaneeth.sr" because name CONTAINS "navaneeth"
+   "Danushiya" → "danushiyakeerthana.s" because name CONTAINS "danushiya"
+   "Santosh"   → "santosh.ms" because name CONTAINS "santosh"
 ════════════════════════════════════════════════ */
 function bestAgentMatch(rawName){
   let best=null,bestScore=0;
-  const rn=rawName.toLowerCase().trim().replace(/[^a-z\s]/g,'').trim();
-  const rnWords=rn.split(/\s+/).filter(w=>w.length>1);
+  const rn=rawName.toLowerCase().trim();
+  // Normalize: strip dots, hyphens, extra spaces for comparison
+  const rnClean=rn.replace(/[^a-z\s]/g,'').replace(/\s+/g,' ').trim();
+  const rnWords=rnClean.split(/\s+/).filter(w=>w.length>=2);
+  const rnFirst=rnWords[0]||'';
 
   for(const ag of AGENTS){
     const agL=ag.toLowerCase();
-    // Normalize: remove dots, special chars for comparison
-    const agNorm=agL.replace(/[^a-z\s]/g,'').trim();
-    const agWords=agNorm.split(/\s+/).filter(w=>w.length>1);
-
-    // ── 1. Exact match ──
-    if(agNorm===rn || agL===rawName.toLowerCase().trim()) return {agent:ag,score:1,quality:'exact'};
+    // Normalize agent: remove dots, special chars
+    const agClean=agL.replace(/[^a-z\s]/g,'').replace(/\s+/g,' ').trim();
+    const agWords=agClean.split(/\s+/).filter(w=>w.length>=2);
+    const agFirst=agWords[0]||'';
 
     let score=0;
 
-    // ── 2. CONTAINS matching ──
-    // OCR name contained in agent name: "navaneeth" → "navaneethsr" contains "navaneeth" ✓
-    if(rn.length>=3 && agNorm.includes(rn)) score=Math.max(score, 0.95);
-    // Agent name contained in OCR name
-    if(agNorm.length>=3 && rn.includes(agNorm)) score=Math.max(score, 0.93);
+    // ── 1. EXACT match ──
+    if(agClean===rnClean || agL===rn){
+      return {agent:ag, score:1.0, quality:'exact'};
+    }
 
-    // Any OCR word contained in agent full string: "Danushiya" in "danushiyakeerthanas" ✓
+    // ── 2. CONTAINS matching (PRIMARY strategy) ──
+    // Does agent name CONTAIN the OCR name?  e.g. "navaneethsr" contains "navaneeth"
+    if(rnClean.length>=3 && agClean.includes(rnClean)){
+      score=Math.max(score, 0.95);
+    }
+    // Does OCR name CONTAIN the agent name? e.g. OCR "navaneeth sr" contains "navaneeth"
+    if(agClean.length>=3 && rnClean.includes(agClean)){
+      score=Math.max(score, 0.93);
+    }
+
+    // ── 3. WORD-level contains ──
+    // Any OCR word contained in agent full name?  "Danushiya" in "danushiyakeerthanas"
     for(const w of rnWords){
-      if(w.length>=3 && agNorm.includes(w)){
+      if(w.length>=3 && agClean.includes(w)){
         score=Math.max(score, 0.90);
+        break;
       }
     }
-    // Any agent word contained in OCR name
+    // Any agent word contained in OCR name?
     for(const aw of agWords){
-      if(aw.length>=3 && rn.includes(aw)){
+      if(aw.length>=3 && rnClean.includes(aw)){
         score=Math.max(score, 0.88);
+        break;
       }
     }
 
-    // ── 3. First-word matches ──
-    const fn1=rnWords[0]||'';
-    const fn2=agWords[0]||'';
-    if(fn1.length>=3 && fn2.length>=3){
-      if(fn1===fn2) score=Math.max(score, 0.87);
-      else if(fn2.includes(fn1)||fn1.includes(fn2)) score=Math.max(score, 0.85);
+    // ── 4. FIRST NAME contains ──
+    if(rnFirst.length>=3 && agFirst.length>=3){
+      if(rnFirst===agFirst) score=Math.max(score, 0.87);
+      else if(agFirst.includes(rnFirst)) score=Math.max(score, 0.85);
+      else if(rnFirst.includes(agFirst)) score=Math.max(score, 0.85);
     }
 
-    // ── 4. Levenshtein fallback ──
-    score=Math.max(score, similarity(rn, agNorm));
+    // ── 5. Levenshtein FALLBACK ──
+    const levScore=similarity(rnClean, agClean);
+    score=Math.max(score, levScore);
 
     if(score>bestScore){bestScore=score; best=ag}
   }
 
-  if(bestScore>=0.80) return {agent:best,score:bestScore,quality:'exact'};
-  if(bestScore>=0.55) return {agent:best,score:bestScore,quality:'fuzzy'};
-  return {agent:best,score:bestScore,quality:'none'};
+  if(bestScore>=0.80) return {agent:best, score:bestScore, quality:'exact'};
+  if(bestScore>=0.55) return {agent:best, score:bestScore, quality:'fuzzy'};
+  return {agent:best, score:bestScore, quality:'none'};
 }
 
 /* ═══════════════════════════════════════════════════════════
    COLUMN HEADER MATCHING — read OCR headers, use CONTAINS
+   
+   Image columns:
+     "Chats"           → contains "chat"     → app chats
+     "Email response"  → contains "email"    → app emails
+     "Meetings"        → contains "meet"     → app meetings
+     "Incoming calls"  → contains "call"     → app calls
 ═══════════════════════════════════════════════════════════ */
 
 const COL_KEYWORDS={
-  chats: ['chat','chats'],
-  emails: ['email','emails','mail','e-mail','response'],
-  channels: ['channel','channels','query','queries'],
-  calls: ['call','calls','phone','meeting','meetings','meet']
+  chats:    ['chat','chats'],
+  emails:   ['email','emails','mail','e-mail','response'],
+  meetings: ['meeting','meetings','meet'],
+  calls:    ['call','calls','incoming','phone']
 };
 
 function autoGuessColMap(headers){
-  const map={chats:-1,calls:-1,emails:-1,channels:-1};
+  // These are DATA column indices (after removing the agent name column)
+  const map={chats:-1, emails:-1, meetings:-1, calls:-1};
   _headerMapLog=[];
 
-  if(!headers.length){
-    map.chats=0; map.emails=1; map.channels=2; map.calls=3;
-    _headerMapLog.push({header:'(no headers detected)',keyword:null,mapped:'default positional mapping'});
-    console.log('⚠️ No headers found — using default positional mapping');
+  if(!headers || headers.length===0){
+    // Default positional: B=chats(0), C=emails(1), D=meetings(2), E=calls(3)
+    map.chats=0; map.emails=1; map.meetings=2; map.calls=3;
+    _headerMapLog.push({header:'(no headers detected)', keyword:null, mapped:'default: B=Chats, C=Email, D=Meetings, E=Calls'});
+    console.log('⚠️ No headers found — using default positional: B=chats, C=emails, D=meetings, E=calls');
     return map;
   }
 
   console.log('📋 === COLUMN HEADER MAPPING (contains-based) ===');
-  console.log('📋 Headers found:', headers);
+  console.log('📋 Data column headers:', headers);
 
-  headers.forEach((h,i)=>{
+  headers.forEach((h, i)=>{
     const hl=h.toLowerCase().trim();
     let matched=false;
-
-    // Skip "agent name" type headers — those aren't data columns
-    if(/agent|^\s*name\s*$/.test(hl) && !/(email|chat|call|channel|meet|query|response)/i.test(hl)){
-      console.log(`  ⏭️ Header "${h}" is agent name column — skipped`);
-      _headerMapLog.push({header:h, keyword:null, mapped:'(name column)', colIdx:i});
-      return;
-    }
 
     // For each app category, check if ANY keyword is CONTAINED in this header
     for(const [cat, keywords] of Object.entries(COL_KEYWORDS)){
       if(matched) break;
+      if(map[cat]>=0) continue; // Already mapped
       for(const kw of keywords){
         if(hl.includes(kw)){
-          if(map[cat]===-1){
-            map[cat]=i;
-            _headerMapLog.push({header:h, keyword:kw, mapped:cat, colIdx:i});
-            console.log(`  ✅ "${h}" contains "${kw}" → ${cat.toUpperCase()} (data col ${i})`);
-            matched=true;
-            break;
-          }
+          map[cat]=i;
+          _headerMapLog.push({header:h, keyword:kw, mapped:cat, colIdx:i});
+          console.log(`  ✅ "${h}" contains "${kw}" → ${cat.toUpperCase()} (col index ${i})`);
+          matched=true;
+          break;
         }
       }
     }
     if(!matched){
       console.log(`  ⏭️ Header "${h}" — no keyword match`);
-      _headerMapLog.push({header:h, keyword:null, mapped:'skipped', colIdx:i});
+      _headerMapLog.push({header:h, keyword:null, mapped:'(unmapped)', colIdx:i});
     }
   });
 
   console.log('📋 Final column mapping:', JSON.stringify(map));
 
-  // Fallback if nothing matched
+  // If nothing matched, use default positional
   const anyMapped=Object.values(map).some(v=>v>=0);
   if(!anyMapped){
-    map.chats=0; map.emails=1; map.channels=2; map.calls=3;
-    _headerMapLog.push({header:'(fallback)',keyword:null,mapped:'default positional mapping'});
+    map.chats=0; map.emails=1; map.meetings=2; map.calls=3;
+    _headerMapLog.push({header:'(fallback)', keyword:null, mapped:'default positional'});
+    console.log('⚠️ No keywords matched — falling back to positional');
   }
+
   return map;
 }
 
 /* ══════════════════════════════════════════════════════
-   ROBUST OCR TEXT PARSER  (v4)
+   ROBUST OCR TEXT PARSER  (v5 — improved)
+   Reads each line, finds agent name & numbers.
+   Uses CONTAINS to match words from AGENTS list.
 ══════════════════════════════════════════════════════ */
 function parseOcrText(rawText){
   console.log('🔍 === RAW OCR TEXT ===\n'+rawText+'\n=== END ===');
@@ -642,7 +676,7 @@ function parseOcrText(rawText){
   const rows=[];
 
   // ── STEP 1: Find header row ──
-  const headerKeywords=['agent','name','chat','chats','email','call','calls','meeting','meetings','channel','query','queries','response'];
+  const headerKeywords=['agent','name','chat','chats','email','call','calls','meeting','meetings','incoming','response'];
   let headerIdx=-1;
   for(let i=0;i<Math.min(lines.length,15);i++){
     const l=lines[i].toLowerCase();
@@ -656,23 +690,25 @@ function parseOcrText(rawText){
     const hLine=lines[headerIdx];
     console.log('📋 Header line ['+headerIdx+']: "'+hLine+'"');
 
-    // Try splitting strategies
-    const strategies=[
-      hLine.split(/\s{2,}|\t+/).map(s=>s.trim()).filter(Boolean),
-      hLine.split('|').map(s=>s.trim()).filter(Boolean),
-      hLine.split(/\t/).map(s=>s.trim()).filter(Boolean),
-    ];
-    let allParts=strategies.reduce((a,b)=>b.length>a.length?b:a,[]);
-
+    // Try splitting by 2+ spaces, tabs, or pipes
+    let allParts=hLine.split(/\s{2,}|\t+/).map(s=>s.trim()).filter(Boolean);
+    if(allParts.length<3){
+      allParts=hLine.split('|').map(s=>s.trim()).filter(Boolean);
+    }
     // Remove pure numbers and single chars
     allParts=allParts.filter(c=>!/^\d+$/.test(c) && c.length>1);
 
-    // Separate "Agent name" from data columns
+    // Separate agent name column from data columns
     dataCols=[];
     for(const p of allParts){
       const pl=p.toLowerCase();
-      const isNameCol=(/agent/i.test(pl)||/^\s*name\s*$/i.test(pl)) && !/(email|chat|call|channel|meet|query|response)/i.test(pl);
-      if(!isNameCol) dataCols.push(p);
+      // Is this the agent name column? Only if it's JUST "agent name" / "name" / "agent"
+      // and NOT a data column like "email response"
+      const isDataKeyword=/(chat|email|call|meet|response|incoming|query|channel)/i.test(pl);
+      const isNameCol=(/agent/i.test(pl)||/^\s*name\s*$/i.test(pl)) && !isDataKeyword;
+      if(!isNameCol){
+        dataCols.push(p);
+      }
     }
 
     _ocrHeaders=dataCols;
@@ -684,107 +720,164 @@ function parseOcrText(rawText){
 
   // ── STEP 3: Parse data rows ──
   const startIdx=headerIdx>=0?headerIdx+1:0;
-  const skipPatterns=[/^[A-E](\s+[A-E])*\s*$/i, /^[#\-=]+$/];
 
   for(let i=startIdx;i<lines.length;i++){
     const line=lines[i];
     if(line.length<2) continue;
-    if(!/[a-zA-Z]/.test(line)) continue;
-    if(skipPatterns.some(p=>p.test(line.trim()))) continue;
+    if(!/[a-zA-Z]/.test(line)) continue;                    // Must have letters
+    if(/^[A-E](\s+[A-E])*\s*$/i.test(line.trim())) continue; // Skip "A B C D E" rows
+    if(/^[#\-=]+$/.test(line.trim())) continue;              // Skip separator rows
+    // Skip if too similar to header
     if(headerIdx>=0 && similarity(line.toLowerCase(), lines[headerIdx].toLowerCase())>0.8) continue;
 
     let name='', nums=[];
 
-    // ─── Try all strategies to extract name + numbers ───
-
-    // Strategy A: Regex with optional leading row number
-    const mA=line.match(/^(?:\d+[\s.|)\-:]*)?([A-Za-z][A-Za-z\s.'\-]+?)\s+([\d][\d\s]*\d?)$/);
-    if(mA){ name=mA[1].trim(); nums=[...mA[2].matchAll(/\d+/g)].map(m=>parseInt(m[0])); }
-
-    // Strategy B: Split by 2+ spaces
-    if(!name||nums.length<2){
+    // ═══ STRATEGY 1: Split by 2+ spaces / tabs ═══
+    {
       const parts=line.split(/\s{2,}|\t+/).map(s=>s.trim()).filter(Boolean);
       if(parts.length>=2){
-        let ni=-1;
+        // Find the first part that contains letters (= name)
+        let nameIdx=-1;
         for(let j=0;j<parts.length;j++){
-          if(/[a-zA-Z]/.test(parts[j])&&!/^\d+$/.test(parts[j])){ni=j;break}
+          if(/[a-zA-Z]/.test(parts[j]) && !/^\d+$/.test(parts[j])){
+            nameIdx=j; break;
+          }
         }
-        if(ni>=0){
-          let cn=parts[ni];
-          let k=ni+1;
-          while(k<parts.length&&/^[a-zA-Z]/.test(parts[k])&&!/^\d+$/.test(parts[k])){cn+=' '+parts[k];k++}
-          const cNums=[];
-          for(let j=k;j<parts.length;j++){const v=parseInt(parts[j].replace(/[^0-9]/g,''));if(!isNaN(v))cNums.push(v)}
-          if(cNums.length>nums.length){name=cn.replace(/^\d+[\s.)\-:]+/,'').trim();nums=cNums}
+        if(nameIdx>=0){
+          // Name could span multiple parts if they're text
+          let candidateName=parts[nameIdx];
+          let numStartIdx=nameIdx+1;
+          // Check if next parts are also text (multi-word name)
+          while(numStartIdx<parts.length && /^[a-zA-Z]/.test(parts[numStartIdx]) && !/^\d+$/.test(parts[numStartIdx])){
+            candidateName+=' '+parts[numStartIdx];
+            numStartIdx++;
+          }
+          // Extract numbers from remaining parts
+          const candidateNums=[];
+          for(let j=numStartIdx;j<parts.length;j++){
+            const v=parseInt(parts[j].replace(/[^0-9]/g,''));
+            if(!isNaN(v)) candidateNums.push(v);
+          }
+          if(candidateNums.length>=2){
+            // Strip leading row number from name: "1 Navaneeth" → "Navaneeth"
+            name=candidateName.replace(/^\d+[\s.)\-:|]*\s*/,'').trim();
+            nums=candidateNums;
+          }
         }
       }
     }
 
-    // Strategy C: Everything before first number = name
-    if(!name||nums.length<2){
-      const allNums=[...line.matchAll(/\b(\d+)\b/g)];
-      if(allNums.length>=2){
-        const fp=allNums[0].index;
-        let cn=line.substring(0,fp).trim().replace(/^\d+[\s.)\-:|]*\s*/,'').trim();
-        if(cn.length>=2&&/[a-zA-Z]/.test(cn)){
-          let si=0;
-          if(allNums[0].index===0||line.substring(0,allNums[0].index).trim()==='') si=1;
-          const cNums=allNums.slice(si).map(m=>parseInt(m[1]));
-          if(cNums.length>nums.length){name=cn;nums=cNums}
+    // ═══ STRATEGY 2: Regex — optional row# + name + numbers at end ═══
+    if(!name || nums.length<2){
+      const m=line.match(/^(?:\d+[\s.|)\-:]*)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.'\-]+?)\s+([\d][\d\s,]*\d)$/);
+      if(m){
+        const cn=m[1].trim();
+        const cNums=[...m[2].matchAll(/\d+/g)].map(x=>parseInt(x[0]));
+        if(cNums.length>=(nums.length||0)){
+          name=cn.replace(/^\d+[\s.)\-:|]*\s*/,'').trim();
+          nums=cNums;
         }
       }
     }
 
-    // Strategy D: "rownum name numbers"
-    if(!name||nums.length<2){
-      const mD=line.match(/^(\d+)\s+([A-Za-z][A-Za-z\s.'\-]+?)\s+(\d[\d\s]+)$/);
-      if(mD){ name=mD[2].trim(); nums=[...mD[3].matchAll(/\d+/g)].map(m=>parseInt(m[0])); }
+    // ═══ STRATEGY 3: Everything before first number group = name ═══
+    if(!name || nums.length<2){
+      const allNumMatches=[...line.matchAll(/\b(\d+)\b/g)];
+      if(allNumMatches.length>=2){
+        // Find where the "data numbers" start (skip leading row number)
+        let firstDataNumIdx=0;
+        // If line starts with a number followed by text, that's a row number
+        if(allNumMatches[0].index<3){
+          const afterFirstNum=line.substring(allNumMatches[0].index+allNumMatches[0][0].length).trimStart();
+          if(/^[a-zA-Z]/.test(afterFirstNum)){
+            firstDataNumIdx=1;
+          }
+        }
+        if(allNumMatches.length>firstDataNumIdx){
+          const nameEnd=allNumMatches[firstDataNumIdx].index;
+          let cn=line.substring(0,nameEnd).trim();
+          // Remove leading row number
+          cn=cn.replace(/^\d+[\s.)\-:|]*\s*/,'').trim();
+          const cNums=allNumMatches.slice(firstDataNumIdx).map(x=>parseInt(x[1]));
+          if(cn.length>=2 && /[a-zA-Z]/.test(cn) && cNums.length>=2){
+            name=cn;
+            nums=cNums;
+          }
+        }
+      }
     }
 
-    // Strategy E: Single-space split, nums from end
-    if(!name||nums.length<2){
+    // ═══ STRATEGY 4: Token split — nums from end ═══
+    if(!name || nums.length<2){
       const tokens=line.split(/\s+/);
       let numStart=tokens.length;
       for(let j=tokens.length-1;j>=0;j--){
         if(/^\d+$/.test(tokens[j])) numStart=j; else break;
       }
-      if(numStart<tokens.length&&numStart>=1){
+      if(numStart<tokens.length && numStart>=1){
         let ns=0;
-        if(/^\d+$/.test(tokens[0])&&numStart>1) ns=1;
+        if(/^\d+$/.test(tokens[0]) && numStart>1) ns=1; // skip row number
         const cn=tokens.slice(ns,numStart).join(' ');
         const cN=tokens.slice(numStart).map(t=>parseInt(t)).filter(n=>!isNaN(n));
-        if(cn.length>=2&&/[a-zA-Z]/.test(cn)&&cN.length>=2){name=cn;nums=cN}
+        if(cn.length>=2 && /[a-zA-Z]/.test(cn) && cN.length>=2){
+          name=cn;
+          nums=cN;
+        }
       }
     }
 
-    if(!name||nums.length===0) continue;
-    name=name.replace(/^\d+[\s.)\-:|]*\s*/,'').trim();
-    if(name.length<2||!/[a-zA-Z]/.test(name)) continue;
+    // ═══ STRATEGY 5: Fuzzy — look for known agent names in the line ═══
+    if(!name || nums.length<2){
+      // Try to find any AGENT name that is CONTAINED in this line
+      const lineL=line.toLowerCase().replace(/[^a-z\s]/g,' ');
+      for(const ag of AGENTS){
+        const agClean=ag.toLowerCase().replace(/[^a-z\s]/g,'').trim();
+        const agFirst=agClean.split(/\s+/)[0];
+        if(agFirst.length>=3 && lineL.includes(agFirst)){
+          // Found agent name — extract numbers from the rest
+          const allNums=[...line.matchAll(/\b(\d+)\b/g)].map(x=>parseInt(x[1]));
+          // Skip the first number if it looks like a row number (1-50)
+          let startN=0;
+          if(allNums.length>4 && allNums[0]<=50) startN=1;
+          const cNums=allNums.slice(startN);
+          if(cNums.length>=2){
+            name=ag; // Use exact agent name
+            nums=cNums;
+            break;
+          }
+        }
+      }
+    }
 
-    console.log(`  ✅ Parsed: "${name}" → [${nums.join(', ')}]`);
+    if(!name || nums.length===0) continue;
+    // Final cleanup: remove leading row number
+    name=name.replace(/^\d+[\s.)\-:|]*\s*/,'').trim();
+    if(name.length<2 || !/[a-zA-Z]/.test(name)) continue;
+
+    console.log(`  ✅ Parsed row: "${name}" → [${nums.join(', ')}]`);
     rows.push({rawName:name, nums});
   }
 
-  console.log(`🏁 Parsed ${rows.length} data rows`);
+  console.log(`🏁 Total parsed ${rows.length} data rows`);
   _lastRawRows=rows;
   return rows;
 }
 
-/* ── Map rows to categories + agent match ── */
+/* ── Map parsed rows to categories + agent match ── */
 function buildMappedData(rows, colIndices){
   return rows.map(r=>{
-    const get=(idx)=>idx>=0&&idx<r.nums.length?r.nums[idx]:0;
+    const get=(idx)=>idx>=0 && idx<r.nums.length ? r.nums[idx] : 0;
     const match=bestAgentMatch(r.rawName);
     return {
-      rawName: r.rawName,
+      rawName:      r.rawName,
       matchedAgent: match.agent,
       matchQuality: match.quality,
-      matchScore: match.score,
-      chats: get(colIndices.chats),
-      calls: get(colIndices.calls),
-      emails: get(colIndices.emails),
-      channels: get(colIndices.channels),
-      include: match.quality!=='none'  // Default: include if matched
+      matchScore:   match.score,
+      chats:    get(colIndices.chats),
+      emails:   get(colIndices.emails),
+      meetings: get(colIndices.meetings),
+      calls:    get(colIndices.calls),
+      include:  match.quality!=='none'
     };
   });
 }
@@ -799,7 +892,7 @@ function updateOcrDateHint(){
     ?`<span class="ocr-date-exist-badge">⚠️ Exists — will overwrite</span> ${formatDate(dateVal)}`
     :`<span class="ocr-date-new-badge">✨ New entry</span> ${formatDate(dateVal)}`;
   const d3=document.getElementById('ocrTargetDate3');
-  if(d3)d3.value=dateVal;
+  if(d3) d3.value=dateVal;
   updateOcrDateHint3();
 }
 function updateOcrDateHint3(){
@@ -832,7 +925,7 @@ function closeOcrModal(){
 }
 function resetOcrModal(){
   showOcrStep(1);
-  _ocrParsed=[];_ocrHeaders=[];_ocrImageUrl='';_lastRawRows=[];_lastRawText='';_headerMapLog=[];
+  _ocrParsed=[];_ocrHeaders=[];_ocrImageUrl='';_lastRawRows=[];_lastRawText='';_headerMapLog=[];_originalValues=[];
   document.getElementById('imgFileInput').value='';
   document.getElementById('ocrModalFoot').innerHTML=`<button class="btn btn-r" onclick="closeOcrModal()">✕ Cancel</button>`;
 }
@@ -852,7 +945,7 @@ function handleDrop(e){
 }
 function handleFileSelect(e){const file=e.target.files[0];if(file) processImageFile(file)}
 
-/* ── Pre-process image ── */
+/* ── Pre-process image for better OCR ── */
 function preprocessImage(file){
   return new Promise((resolve)=>{
     const img=new Image();
@@ -915,15 +1008,15 @@ async function processImageFile(file){
     URL.revokeObjectURL(processedUrl);
     await worker.terminate();
 
-    setProgress(95,'Parsing…','Building data table');
+    setProgress(95,'Parsing results…','Building data table');
     await new Promise(r=>setTimeout(r,200));
 
     const rawRows=parseOcrText(text);
 
     if(rawRows.length===0){
       showOcrStep(1);
-      toast('⚠️ No table data found. Check console (F12) for raw OCR text.','#f87171');
-      console.warn('❌ No rows parsed. Raw:\n'+text);
+      toast('⚠️ No table data found. Try a clearer screenshot. Check F12 console for raw OCR text.','#f87171');
+      console.warn('❌ No rows parsed from OCR. Raw text:\n'+text);
       return;
     }
 
@@ -931,7 +1024,9 @@ async function processImageFile(file){
     await new Promise(r=>setTimeout(r,200));
 
     const colMap=autoGuessColMap(_ocrHeaders);
-    _ocrParsed=buildMappedData(rawRows,colMap);
+    _ocrParsed=buildMappedData(rawRows, colMap);
+    // Save original values for edit detection
+    _originalValues=_ocrParsed.map(r=>({chats:r.chats, emails:r.emails, meetings:r.meetings, calls:r.calls}));
 
     showOcrStep(3);
     document.getElementById('ocrTargetDate3').value=targetDate;
@@ -939,7 +1034,7 @@ async function processImageFile(file){
     document.getElementById('ocrRawText').textContent=text;
     document.getElementById('ocrPreviewImg').src=_ocrImageUrl;
 
-    renderOcrPreview(rawRows,colMap);
+    renderOcrPreview(rawRows, colMap);
     document.getElementById('ocrModalFoot').innerHTML=`
       <button class="btn btn-r" onclick="closeOcrModal()">✕ Cancel</button>
       <button class="btn" style="background:var(--orange);color:#000" onclick="resetOcrModal()">🔄 Re-upload</button>
@@ -954,43 +1049,51 @@ async function processImageFile(file){
 
 /* ══════════════════════════════════════════════
    RENDER EDITABLE OCR PREVIEW TABLE (Step 3)
+   User can:
+   1. Check/uncheck rows to include/skip
+   2. Change agent assignment via dropdown
+   3. Edit all number values manually
+   4. Reassign column mapping
 ══════════════════════════════════════════════ */
 function renderOcrPreview(rawRows, currentColMap){
-  // Info box
+  // Info box — summary
   const matched=_ocrParsed.filter(r=>r.matchQuality!=='none').length;
   const exact=_ocrParsed.filter(r=>r.matchQuality==='exact').length;
   const fuzzy=_ocrParsed.filter(r=>r.matchQuality==='fuzzy').length;
   const skipped=_ocrParsed.filter(r=>r.matchQuality==='none').length;
   document.getElementById('ocrInfoBox').innerHTML=
-    `✅ <strong>${rawRows.length}</strong> rows detected · <strong>${matched}</strong> matched · <strong>${exact}</strong> exact · <strong>${fuzzy}</strong> fuzzy · <strong>${skipped}</strong> unmatched`;
+    `📊 <strong>${rawRows.length}</strong> rows detected · ` +
+    `<span style="color:var(--green)"><strong>${exact}</strong> exact</span> · ` +
+    `<span style="color:var(--orange)"><strong>${fuzzy}</strong> fuzzy</span> · ` +
+    `<span style="color:var(--red)"><strong>${skipped}</strong> unmatched</span>`;
 
   // Header mapping info
   const hMapEl=document.getElementById('ocrHeaderMapInfo');
   if(_headerMapLog.length>0 && _ocrHeaders.length>0){
-    let html='📋 <strong>Detected columns:</strong> '+_ocrHeaders.map(h=>`"<strong>${h}</strong>"`).join(', ');
-    html+='<br>🔗 <strong>Auto-mapping:</strong> ';
+    let html='📋 <strong>Detected image columns:</strong> '+_ocrHeaders.map(h=>`"<strong>${h}</strong>"`).join(', ');
+    html+='<br>🔗 <strong>Contains matching:</strong> ';
     const mappings=_headerMapLog.filter(l=>l.keyword);
     html+=mappings.length>0
-      ?mappings.map(l=>`"${l.header}" <em>contains</em> "<strong>${l.keyword}</strong>" → <strong>${l.mapped.toUpperCase()}</strong>`).join(' · ')
-      :'No keyword matches — using positional mapping';
+      ?mappings.map(l=>`"${l.header}" <em style="color:var(--green)">contains</em> "<strong>${l.keyword}</strong>" → <strong style="color:var(--accent2)">${CAT_META[l.mapped]?.label||l.mapped}</strong>`).join(' &nbsp;·&nbsp; ')
+      :'No keyword matches — using default positional mapping (B=Chats, C=Email, D=Meetings, E=Calls)';
     hMapEl.innerHTML=html;hMapEl.style.display='block';
   } else { hMapEl.style.display='none' }
 
-  // Warning box
+  // Warning box for unmatched agents
   if(skipped>0){
     document.getElementById('ocrWarnBox').style.display='block';
-    document.getElementById('ocrWarnBox').textContent=`⚠️ ${skipped} row(s) could not be auto-matched. You can manually assign them using the dropdown below.`;
+    document.getElementById('ocrWarnBox').textContent=`⚠️ ${skipped} row(s) could not be auto-matched to any agent. Use the dropdown to manually assign them, or uncheck to skip.`;
   } else {
     document.getElementById('ocrWarnBox').style.display='none';
   }
 
-  // Column mapping dropdowns
+  // Column mapping dropdowns — let user reassign
   const numColCount=rawRows.length?Math.max(...rawRows.map(r=>r.nums.length)):4;
   const catDefs=[
-    {cat:'chats',icon:'💬',label:'Chats',val:currentColMap.chats},
-    {cat:'emails',icon:'📧',label:'Emails',val:currentColMap.emails},
-    {cat:'channels',icon:'📢',label:'Channels',val:currentColMap.channels},
-    {cat:'calls',icon:'📞',label:'Calls/Meetings',val:currentColMap.calls},
+    {cat:'chats',    icon:'💬', label:'Chats',          val:currentColMap.chats},
+    {cat:'emails',   icon:'📧', label:'Email Response',  val:currentColMap.emails},
+    {cat:'meetings', icon:'🤝', label:'Meetings',        val:currentColMap.meetings},
+    {cat:'calls',    icon:'📞', label:'Incoming Calls',   val:currentColMap.calls},
   ];
   let colMapHtml='';
   catDefs.forEach(cd=>{
@@ -1004,36 +1107,35 @@ function renderOcrPreview(rawRows, currentColMap){
   });
   document.getElementById('colMap').innerHTML=colMapHtml;
 
-  // Build the editable table
   buildEditableOcrTable();
   updateOcrStats();
 }
 
-/* ── Build editable OCR preview table ── */
+/* ── Build the editable preview table ── */
 function buildEditableOcrTable(){
   const thead=document.querySelector('#ocrPreviewTbl thead');
   const tbody=document.querySelector('#ocrPreviewTbl tbody');
 
   thead.innerHTML=`<tr>
     <th style="width:30px">✓</th>
-    <th>OCR Name</th>
-    <th>→ Assign Agent</th>
+    <th>OCR Name (from image)</th>
+    <th>→ Matched Agent</th>
     <th>Match</th>
     <th>💬 Chats</th>
-    <th>📧 Emails</th>
-    <th>📢 Channels</th>
+    <th>📧 Email</th>
+    <th>🤝 Meetings</th>
     <th>📞 Calls</th>
-    <th style="font-size:9px">Raw #s</th>
+    <th style="font-size:9px">Raw Numbers</th>
   </tr>`;
 
   tbody.innerHTML='';
 
-  _ocrParsed.forEach((r,idx)=>{
+  _ocrParsed.forEach((r, idx)=>{
     const tr=document.createElement('tr');
     tr.id='ocr-row-'+idx;
     if(!r.include) tr.style.opacity='0.4';
 
-    // Checkbox
+    // ── Checkbox to include/skip ──
     const tdCb=document.createElement('td');
     tdCb.style.textAlign='center';
     const cb=document.createElement('input');
@@ -1049,14 +1151,15 @@ function buildEditableOcrTable(){
     tdCb.appendChild(cb);
     tr.appendChild(tdCb);
 
-    // Raw name
+    // ── OCR raw name ──
     const tdRaw=document.createElement('td');
     tdRaw.style.color='var(--muted)';
     tdRaw.style.fontStyle='italic';
-    tdRaw.textContent=r.rawName;
+    tdRaw.style.fontSize='11px';
+    tdRaw.textContent=`"${r.rawName}"`;
     tr.appendChild(tdRaw);
 
-    // Agent dropdown
+    // ── Agent dropdown (user can change) ──
     const tdAgent=document.createElement('td');
     const sel=document.createElement('select');
     sel.className='ocr-agent-select';
@@ -1065,7 +1168,6 @@ function buildEditableOcrTable(){
     else if(r.matchQuality==='fuzzy') sel.classList.add('matched-ok');
     else sel.classList.add('matched-none');
 
-    // Options: skip + all agents
     let optHtml='<option value="">(skip — no agent)</option>';
     AGENTS.forEach(ag=>{
       const selected=(ag===r.matchedAgent)?'selected':'';
@@ -1077,32 +1179,33 @@ function buildEditableOcrTable(){
       _ocrParsed[idx].matchedAgent=newAgent||null;
       _ocrParsed[idx].matchQuality=newAgent?'exact':'none';
       _ocrParsed[idx].include=!!newAgent;
-      // Update checkbox
       const cbEl=document.querySelector(`#ocr-row-${idx} .ocr-include-cb`);
       if(cbEl) cbEl.checked=!!newAgent;
       document.getElementById('ocr-row-'+idx).style.opacity=newAgent?'1':'0.4';
-      // Update badge
       const badge=document.querySelector(`#ocr-row-${idx} .badge-match`);
       if(badge){
         badge.textContent=newAgent?'Manual ✓':'No match';
         badge.className='badge-match '+(newAgent?'badge-exact':'badge-skip');
       }
-      // Update select styling
       this.className='ocr-agent-select '+(newAgent?'matched-good':'matched-none');
       updateOcrStats();
     };
     tdAgent.appendChild(sel);
     tr.appendChild(tdAgent);
 
-    // Match badge
+    // ── Match quality badge ──
     const tdMatch=document.createElement('td');
-    const qLabel=r.matchQuality==='exact'?'Exact ✓':r.matchQuality==='fuzzy'?`Fuzzy ${Math.round(r.matchScore*100)}%`:'No match';
+    const qLabel=r.matchQuality==='exact'
+      ?`Contains ✓ (${Math.round(r.matchScore*100)}%)`
+      :r.matchQuality==='fuzzy'
+        ?`Fuzzy ${Math.round(r.matchScore*100)}%`
+        :'No match';
     const qBadge=r.matchQuality==='exact'?'badge-exact':r.matchQuality==='fuzzy'?'badge-fuzzy':'badge-skip';
     tdMatch.innerHTML=`<span class="badge-match ${qBadge}">${qLabel}</span>`;
     tr.appendChild(tdMatch);
 
-    // Editable number inputs: chats, emails, channels, calls
-    ['chats','emails','channels','calls'].forEach(cat=>{
+    // ── Editable number inputs: chats, emails, meetings, calls ──
+    ['chats','emails','meetings','calls'].forEach(cat=>{
       const td=document.createElement('td');
       td.style.textAlign='center';
       const inp=document.createElement('input');
@@ -1112,10 +1215,12 @@ function buildEditableOcrTable(){
       inp.value=r[cat];
       inp.dataset.idx=idx;
       inp.dataset.cat=cat;
+      inp.dataset.original=r[cat]; // Store original for edit detection
       inp.onchange=function(){
         const v=parseInt(this.value)||0;
         _ocrParsed[idx][cat]=v;
-        if(v!==r[cat]) this.classList.add('edited');
+        // Highlight if user changed the value
+        if(v!==parseInt(this.dataset.original)) this.classList.add('edited');
         else this.classList.remove('edited');
         updateOcrStats();
       };
@@ -1124,7 +1229,7 @@ function buildEditableOcrTable(){
       tr.appendChild(td);
     });
 
-    // Raw numbers
+    // ── Raw numbers from OCR ──
     const tdNums=document.createElement('td');
     tdNums.style.fontSize='10px';
     tdNums.style.color='var(--muted)';
@@ -1135,41 +1240,49 @@ function buildEditableOcrTable(){
   });
 }
 
-/* ── Update stats from current editable state ── */
+/* ── Live stats update ── */
 function updateOcrStats(){
   const included=_ocrParsed.filter(r=>r.include);
   const tChats=included.reduce((s,r)=>s+r.chats,0);
   const tEmails=included.reduce((s,r)=>s+r.emails,0);
-  const tChannels=included.reduce((s,r)=>s+r.channels,0);
+  const tMeetings=included.reduce((s,r)=>s+r.meetings,0);
   const tCalls=included.reduce((s,r)=>s+r.calls,0);
+  const total=tChats+tEmails+tMeetings+tCalls;
+
+  // Check for duplicate agent assignments
+  const agentMap={};
+  included.forEach(r=>{if(r.matchedAgent) agentMap[r.matchedAgent]=(agentMap[r.matchedAgent]||0)+1});
+  const dupes=Object.entries(agentMap).filter(([_,c])=>c>1);
+  const dupeWarn=dupes.length>0?` · <span style="color:var(--red)">⚠️ Duplicates: ${dupes.map(([n,c])=>`${n}(${c}x)`).join(', ')}</span>`:'';
+
   document.getElementById('ocrStats').innerHTML=
     `<div class="ocr-stat">✅ Including <span>${included.length}/${_ocrParsed.length}</span></div>`+
     `<div class="ocr-stat">💬 Chats <span>${tChats}</span></div>`+
     `<div class="ocr-stat">📧 Emails <span>${tEmails}</span></div>`+
-    `<div class="ocr-stat">📢 Channels <span>${tChannels}</span></div>`+
-    `<div class="ocr-stat">📞 Calls <span>${tCalls}</span></div>`;
+    `<div class="ocr-stat">🤝 Meetings <span>${tMeetings}</span></div>`+
+    `<div class="ocr-stat">📞 Calls <span>${tCalls}</span></div>`+
+    `<div class="ocr-stat">📊 Total <span>${total}</span></div>`+
+    (dupeWarn?`<div class="ocr-stat">${dupeWarn}</div>`:'');
 }
 
-/* ── Remap columns when user changes column dropdowns ── */
+/* ── Remap columns when user changes dropdowns ── */
 function remapColumns(){
   const getVal=(id)=>parseInt(document.getElementById(id)?.value??-1);
   const colIndices={
-    chats:getVal('colmap-chats'),
-    emails:getVal('colmap-emails'),
-    channels:getVal('colmap-channels'),
-    calls:getVal('colmap-calls')
+    chats:    getVal('colmap-chats'),
+    emails:   getVal('colmap-emails'),
+    meetings: getVal('colmap-meetings'),
+    calls:    getVal('colmap-calls')
   };
 
-  // Rebuild mapped data (preserving include states & manual agent overrides)
-  const prevAgentOverrides=_ocrParsed.map(r=>({agent:r.matchedAgent,quality:r.matchQuality,include:r.include}));
-  _ocrParsed=buildMappedData(_lastRawRows,colIndices);
-
-  // Restore manual overrides
+  // Preserve manual agent overrides & include states
+  const overrides=_ocrParsed.map(r=>({agent:r.matchedAgent, quality:r.matchQuality, include:r.include}));
+  _ocrParsed=buildMappedData(_lastRawRows, colIndices);
   _ocrParsed.forEach((r,i)=>{
-    if(prevAgentOverrides[i]){
-      r.matchedAgent=prevAgentOverrides[i].agent;
-      r.matchQuality=prevAgentOverrides[i].quality;
-      r.include=prevAgentOverrides[i].include;
+    if(overrides[i]){
+      r.matchedAgent=overrides[i].agent;
+      r.matchQuality=overrides[i].quality;
+      r.include=overrides[i].include;
     }
   });
 
@@ -1178,29 +1291,30 @@ function remapColumns(){
 }
 
 /* ══════════════════════════════════════════════
-   APPLY — Read values from the editable table
+   APPLY — Reads ALL values from the editable UI
+   Nothing is saved until user clicks Confirm
 ══════════════════════════════════════════════ */
 function applyOcrData(){
   const targetDate=document.getElementById('ocrTargetDate3').value||document.getElementById('ocrTargetDate').value;
   if(!targetDate){toast('⚠️ Please select a target date','#f87171');return}
 
-  // Read current values from the editable inputs (user may have changed them)
+  // Read current values from the editable inputs
   const finalData=[];
   _ocrParsed.forEach((r,idx)=>{
     if(!r.include||!r.matchedAgent) return;
 
-    // Read the actual input values from the DOM (user may have edited)
-    const chatsInput=document.querySelector(`input.ocr-input[data-idx="${idx}"][data-cat="chats"]`);
-    const emailsInput=document.querySelector(`input.ocr-input[data-idx="${idx}"][data-cat="emails"]`);
-    const channelsInput=document.querySelector(`input.ocr-input[data-idx="${idx}"][data-cat="channels"]`);
-    const callsInput=document.querySelector(`input.ocr-input[data-idx="${idx}"][data-cat="calls"]`);
+    const getVal=(cat)=>{
+      const inp=document.querySelector(`input.ocr-input[data-idx="${idx}"][data-cat="${cat}"]`);
+      return parseInt(inp?.value)||0;
+    };
 
     finalData.push({
-      agent: r.matchedAgent,
-      chats: parseInt(chatsInput?.value)||0,
-      emails: parseInt(emailsInput?.value)||0,
-      channels: parseInt(channelsInput?.value)||0,
-      calls: parseInt(callsInput?.value)||0,
+      agent:    r.matchedAgent,
+      rawName:  r.rawName,
+      chats:    getVal('chats'),
+      emails:   getVal('emails'),
+      meetings: getVal('meetings'),
+      calls:    getVal('calls'),
     });
   });
 
@@ -1212,25 +1326,29 @@ function applyOcrData(){
   const dupes=Object.entries(agentCounts).filter(([_,c])=>c>1);
   if(dupes.length>0){
     const names=dupes.map(([n,c])=>`"${n}" (${c}x)`).join(', ');
-    if(!confirm(`⚠️ Duplicate agent assignments detected: ${names}\n\nThe last row's values will be used. Continue anyway?`)) return;
+    if(!confirm(`⚠️ Duplicate agent assignments: ${names}\n\nThe last row's values will overwrite earlier ones. Continue?`)) return;
   }
+
+  // Final confirmation
+  const summary=finalData.map(d=>`  ${d.rawName} → ${d.agent}: C=${d.chats} E=${d.emails} M=${d.meetings} I=${d.calls}`).join('\n');
+  if(!confirm(`Apply ${finalData.length} records to ${formatDate(targetDate)}?\n\n${summary}\n\nClick OK to confirm.`)) return;
 
   // Create or get the day entry
   let day=STATE.days.find(d=>d.date===targetDate);
   if(!day){
     const agents={};
-    AGENTS.forEach(a=>agents[a]={chats:0,calls:0,emails:0,channels:0});
-    day={date:targetDate,agents};
+    AGENTS.forEach(a=>agents[a]={chats:0,emails:0,meetings:0,calls:0});
+    day={date:targetDate, agents};
     STATE.days.push(day);
   }
 
   // Apply values
   finalData.forEach(d=>{
-    if(!day.agents[d.agent]) day.agents[d.agent]={chats:0,calls:0,emails:0,channels:0};
+    if(!day.agents[d.agent]) day.agents[d.agent]={chats:0,emails:0,meetings:0,calls:0};
     day.agents[d.agent].chats=d.chats;
-    day.agents[d.agent].calls=d.calls;
     day.agents[d.agent].emails=d.emails;
-    day.agents[d.agent].channels=d.channels;
+    day.agents[d.agent].meetings=d.meetings;
+    day.agents[d.agent].calls=d.calls;
   });
 
   STATE.activeDay=targetDate;
@@ -1264,16 +1382,16 @@ function renderDashboard(){
   else filteredDays=STATE.days.filter(d=>d.date===fil);
 
   const agg={};
-  AGENTS.forEach(a=>agg[a]={chats:0,calls:0,emails:0,channels:0,total:0});
+  AGENTS.forEach(a=>agg[a]={chats:0,emails:0,meetings:0,calls:0,total:0});
   filteredDays.forEach(day=>{
     AGENTS.forEach(a=>{
-      const d=day.agents[a]||{chats:0,calls:0,emails:0,channels:0};
+      const d=day.agents[a]||{chats:0,emails:0,meetings:0,calls:0};
       CATS.forEach(c=>agg[a][c]+=d[c]);
-      agg[a].total+=d.chats+d.calls+d.emails+d.channels;
+      agg[a].total+=d.chats+d.emails+d.meetings+d.calls;
     });
   });
 
-  const totals={chats:0,calls:0,emails:0,channels:0,total:0};
+  const totals={chats:0,emails:0,meetings:0,calls:0,total:0};
   AGENTS.forEach(a=>{CATS.forEach(c=>totals[c]+=agg[a][c]);totals.total+=agg[a].total});
 
   const fc=document.getElementById('dayFilters');
@@ -1291,7 +1409,7 @@ function renderDashboard(){
 
   const thead=document.querySelector('#rankTable thead');
   const tbody=document.querySelector('#rankTable tbody');
-  thead.innerHTML=`<tr><th>Rank</th><th>Agent</th><th>💬 Chats</th><th>📞 Calls</th><th>📧 Emails</th><th>📢 Channels</th><th>Total</th><th>Performance</th></tr>`;
+  thead.innerHTML=`<tr><th>Rank</th><th>Agent</th><th>💬 Chats</th><th>� Emails</th><th>🤝 Meetings</th><th>� Calls</th><th>Total</th><th>Performance</th></tr>`;
   tbody.innerHTML='';
 
   if(activeRanked.length===0){
@@ -1304,8 +1422,8 @@ function renderDashboard(){
       tbody.innerHTML+=`<tr>
         <td class="rank-cell">${medal||i+1}</td>
         <td><div class="agent-cell"><div class="ava" style="background:${avaColor(a.name)}">${ini(a.name)}</div><strong>${a.name}</strong></div></td>
-        <td style="text-align:center">${a.chats}</td><td style="text-align:center">${a.calls}</td>
-        <td style="text-align:center">${a.emails}</td><td style="text-align:center">${a.channels}</td>
+        <td style="text-align:center">${a.chats}</td><td style="text-align:center">${a.emails}</td>
+        <td style="text-align:center">${a.meetings}</td><td style="text-align:center">${a.calls}</td>
         <td style="text-align:center;font-weight:800;color:var(--accent2)">${a.total}</td>
         <td class="bar-cell"><div style="font-size:11px;font-weight:700;color:var(--muted)">${pct}%</div><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div></td>
       </tr>`;
@@ -1316,9 +1434,9 @@ function renderDashboard(){
   document.getElementById('kpis').innerHTML=`
     <div class="kpi total"><div class="lbl">Total Interactions</div><div class="num">${totals.total.toLocaleString()}</div></div>
     <div class="kpi chats"><div class="lbl">💬 Total Chats</div><div class="num">${totals.chats.toLocaleString()}</div></div>
-    <div class="kpi calls"><div class="lbl">📞 Total Calls</div><div class="num">${totals.calls.toLocaleString()}</div></div>
-    <div class="kpi emails"><div class="lbl">📧 Total Emails</div><div class="num">${totals.emails.toLocaleString()}</div></div>
-    <div class="kpi channels"><div class="lbl">📢 Channel Queries</div><div class="num">${totals.channels.toLocaleString()}</div></div>
+    <div class="kpi emails"><div class="lbl">� Email Responses</div><div class="num">${totals.emails.toLocaleString()}</div></div>
+    <div class="kpi meetings"><div class="lbl">🤝 Total Meetings</div><div class="num">${totals.meetings.toLocaleString()}</div></div>
+    <div class="kpi calls"><div class="lbl">� Incoming Calls</div><div class="num">${totals.calls.toLocaleString()}</div></div>
     <div class="kpi agents"><div class="lbl">Active Agents</div><div class="num">${activeAgents}</div></div>`;
 
   renderCharts(totals,sorted,agg);
