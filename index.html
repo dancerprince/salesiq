@@ -7,6 +7,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+<script src="db.js"></script>
+<script src="backup.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#090b10;--surface:#0f1219;--card:#151a27;--card2:#1a2033;--card3:#1e2540;--border:#242b42;--border2:#2d365a;--text:#e8ebf4;--text2:#cdd1e0;--muted:#5d6580;--accent:#7c6cf0;--accent2:#a78bfa;--accent-bg:rgba(124,108,240,.08);--cyan:#22d3ee;--cyan2:#67e8f9;--green:#34d399;--green2:#6ee7b7;--orange:#fbbf24;--orange2:#fcd34d;--red:#f87171;--red2:#fca5a5;--pink:#f472b6;--blue:#60a5fa;--gold:#ffd700;--silver:#c0c0c0;--bronze:#cd7f32;--r:14px;--rs:10px;--shadow:0 4px 24px rgba(0,0,0,.35);--shadow-lg:0 8px 40px rgba(0,0,0,.5);--glass:rgba(15,18,25,.85);--glow-accent:0 0 20px rgba(124,108,240,.15);--glow-cyan:0 0 20px rgba(34,211,238,.15);--glow-green:0 0 20px rgba(52,211,153,.15);--zoho-blue:#3b7ddd}
@@ -662,6 +664,15 @@ tr:hover td{background:rgba(124,108,240,.03)}
         <div class="pill-role" id="navUserRole">Admin</div>
       </div>
     </div>
+    <button class="logout-btn" style="background:var(--card3);color:var(--cyan);border:1px solid var(--border)" onclick="exportBackup()" title="Download a JSON backup of all your data">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/></svg>
+      Backup
+    </button>
+    <label class="logout-btn" style="background:var(--card3);color:var(--orange);border:1px solid var(--border);cursor:pointer" title="Restore data from a JSON backup file">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+      Restore
+      <input type="file" accept=".json" style="display:none" onchange="importBackup(event)">
+    </label>
     <button class="logout-btn" onclick="doLogout()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
       Logout
@@ -864,11 +875,12 @@ const USERS_KEY='agt_tracker_users';
 const SESSION_KEY='agt_tracker_session';
 let CURRENT_USER=null;
 
+/* Sync wrappers — localStorage for fast access, IndexedDB (db.js) for durable persistence */
 function getUsers(){try{return JSON.parse(localStorage.getItem(USERS_KEY))||[]}catch(e){return[]}}
-function saveUsers(u){localStorage.setItem(USERS_KEY,JSON.stringify(u))}
+function saveUsers(u){localStorage.setItem(USERS_KEY,JSON.stringify(u));DB.saveAllUsers(u).catch(()=>{})}
 function getSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY))||null}catch(e){return null}}
-function setSession(u){localStorage.setItem(SESSION_KEY,JSON.stringify(u));CURRENT_USER=u}
-function clearSession(){localStorage.removeItem(SESSION_KEY);CURRENT_USER=null}
+function setSession(u){const s={id:u.id,name:u.name,email:u.email,role:u.role};localStorage.setItem(SESSION_KEY,JSON.stringify(s));CURRENT_USER=s;DB.setSession(s).catch(()=>{})}
+function clearSession(){localStorage.removeItem(SESSION_KEY);CURRENT_USER=null;DB.clearSession().catch(()=>{})}
 
 function hashPassword(pwd){let h=0;for(let i=0;i<pwd.length;i++){const c=pwd.charCodeAt(i);h=((h<<5)-h)+c;h|=0}return 'h_'+Math.abs(h).toString(36)+'_'+pwd.length}
 
@@ -895,7 +907,7 @@ function togglePwd(inputId,btn){
   else{inp.type='password';btn.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>'}
 }
 
-function doSignup(){
+async function doSignup(){
   hideAuthMessages();
   const name=document.getElementById('signupName').value.trim();
   const email=document.getElementById('signupEmail').value.trim().toLowerCase();
@@ -906,27 +918,33 @@ function doSignup(){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showAuthError('Please enter a valid email address');return}
   if(pwd.length<6){showAuthError('Password must be at least 6 characters');return}
   if(pwd!==confirm){showAuthError('Passwords do not match');return}
-  const users=getUsers();
+  let users=getUsers();
+  /* Also check IndexedDB for existing accounts */
+  if(users.length===0){try{users=await DB.getUsers();if(users.length>0)localStorage.setItem(USERS_KEY,JSON.stringify(users))}catch(e){}}
   if(users.find(u=>u.email===email)){showAuthError('An account with this email already exists');return}
   const newUser={id:Date.now()+'_'+Math.random().toString(36).substr(2,5),name,email,password:hashPassword(pwd),role:'Admin',createdAt:new Date().toISOString()};
   users.push(newUser);saveUsers(users);
+  /* Also save individual user to durable DB */
+  DB.saveUser(newUser).catch(()=>{});
   showAuthSuccess('Account created successfully! Please sign in.');
   document.getElementById('signupName').value='';document.getElementById('signupPassword').value='';document.getElementById('signupConfirm').value='';
   setTimeout(()=>switchAuthTab('login'),1200);
 }
 
-function doLogin(){
+async function doLogin(){
   hideAuthMessages();
   const email=document.getElementById('loginEmail').value.trim().toLowerCase();
   const pwd=document.getElementById('loginPassword').value;
   if(!email){showAuthError('Please enter your email address');return}
   if(!pwd){showAuthError('Please enter your password');return}
-  const users=getUsers();
-  const user=users.find(u=>u.email===email);
+  /* Try localStorage first, then IndexedDB for user lookup */
+  let users=getUsers();
+  let user=users.find(u=>u.email===email);
+  if(!user){try{const dbUsers=await DB.getUsers();user=dbUsers.find(u=>u.email===email);if(user){users=dbUsers;localStorage.setItem(USERS_KEY,JSON.stringify(dbUsers))}}catch(e){}}
   if(!user){showAuthError('No account found with this email');return}
   if(user.password!==hashPassword(pwd)){showAuthError('Incorrect password');return}
   setSession({id:user.id,name:user.name,email:user.email,role:user.role});
-  enterApp();
+  await enterApp();
 }
 
 function doZohoLogin(){hideAuthMessages();showAuthSuccess('Zoho OAuth would redirect here. For now, please use email/password login or create an account.')}
@@ -954,7 +972,7 @@ function updateUserUI(){
 
 function getEditorName(){return CURRENT_USER?CURRENT_USER.name:'Admin'}
 
-function enterApp(){
+async function enterApp(){
   document.getElementById('authScreen').classList.remove('show');
   document.getElementById('mainApp').classList.add('show');
   updateUserUI();
@@ -962,7 +980,9 @@ function enterApp(){
   AGENTS=[];AGENT_MAP={};STATE={days:[],activeDay:null,dashFilter:'today'};UPDATE_LOGS=[];
   API_CONFIG={clientId:'',clientSecret:'',orgId:'',deskOrgId:'',dc:'https://accounts.zoho.com',redirectUri:''};
   API_TOKENS={salesiq:{connected:false,accessToken:'',refreshToken:'',expiresAt:0},desk:{connected:false,accessToken:'',refreshToken:'',expiresAt:0}};
+  /* First try localStorage (fast), then fill from IndexedDB (durable) */
   load();
+  await loadFromDB();
   /* Migrate old global keys if per-user data is empty */
   if(STATE.days.length===0){try{const old=localStorage.getItem('agt_tracker_v5_daily');if(old){STATE=JSON.parse(old);save()}}catch(e){}}
   if(AGENTS.length===0){try{const old=localStorage.getItem('agt_tracker_agents');if(old){const p=JSON.parse(old);if(Array.isArray(p)&&p.length>0){AGENTS=p;saveAgents()}}}catch(e){}}
@@ -989,7 +1009,9 @@ function createSplashParticles(){
   }
 }
 
-function runSplashScreen(){
+async function runSplashScreen(){
+  /* Initialize IndexedDB and migrate any existing localStorage data */
+  try{await DB.init()}catch(e){console.warn('DB init failed, using localStorage only',e)}
   createSplashParticles();
   const bar=document.getElementById('splashProgress');
   const status=document.getElementById('splashStatus');
@@ -1007,10 +1029,14 @@ function runSplashScreen(){
     if(i>=steps.length){
       setTimeout(()=>{
         document.getElementById('splashScreen').classList.add('fade-out');
-        setTimeout(()=>{
+        setTimeout(async()=>{
           document.getElementById('splashScreen').style.display='none';
-          const session=getSession();
-          if(session){CURRENT_USER=session;enterApp()}
+          /* Restore session — try localStorage first, then IndexedDB */
+          let session=getSession();
+          if(!session){try{session=await DB.getSession()}catch(e){}}
+          /* Restore users from IndexedDB to localStorage if missing */
+          if(getUsers().length===0){try{const dbUsers=await DB.getUsers();if(dbUsers.length>0){localStorage.setItem(USERS_KEY,JSON.stringify(dbUsers))}}catch(e){}}
+          if(session){CURRENT_USER=session;await enterApp()}
           else{document.getElementById('authScreen').classList.add('show')}
         },800);
       },400);
@@ -1059,10 +1085,12 @@ function _AGENT_MAP_KEY(){return _uk('agt_tracker_agent_map')}
 function _API_KEY(){return _uk('agt_tracker_api_config')}
 function _API_TOKENS_KEY(){return _uk('agt_tracker_api_tokens')}
 let STATE={days:[],activeDay:null,dashFilter:'today'};let UPDATE_LOGS=[];let API_CONFIG={clientId:'',clientSecret:'',orgId:'',deskOrgId:'',dc:'https://accounts.zoho.com',redirectUri:''};let API_TOKENS={salesiq:{connected:false,accessToken:'',refreshToken:'',expiresAt:0},desk:{connected:false,accessToken:'',refreshToken:'',expiresAt:0}};
-function save(){localStorage.setItem(_STORAGE_KEY(),JSON.stringify(STATE))}
+function save(){localStorage.setItem(_STORAGE_KEY(),JSON.stringify(STATE));if(CURRENT_USER)DB.setUserData(CURRENT_USER.id,'agt_tracker_v6_daily',JSON.stringify(STATE)).catch(()=>{})}
 function load(){try{const r=localStorage.getItem(_STORAGE_KEY());if(r)STATE=JSON.parse(r);else STATE={days:[],activeDay:null,dashFilter:'today'}}catch(e){STATE={days:[],activeDay:null,dashFilter:'today'}}try{const a=localStorage.getItem(_AGENTS_KEY());if(a){const parsed=JSON.parse(a);if(Array.isArray(parsed)&&parsed.length>0)AGENTS=parsed}}catch(e){}try{const am=localStorage.getItem(_AGENT_MAP_KEY());if(am){const parsed=JSON.parse(am);if(parsed&&typeof parsed==='object')AGENT_MAP=parsed}}catch(e){}try{const l=localStorage.getItem(_LOG_KEY());if(l)UPDATE_LOGS=JSON.parse(l);else UPDATE_LOGS=[]}catch(e){UPDATE_LOGS=[]}try{const c=localStorage.getItem(_API_KEY());if(c)API_CONFIG=JSON.parse(c)}catch(e){}try{const t=localStorage.getItem(_API_TOKENS_KEY());if(t)API_TOKENS=JSON.parse(t)}catch(e){}}
-function saveAgents(){localStorage.setItem(_AGENTS_KEY(),JSON.stringify(AGENTS));localStorage.setItem(_AGENT_MAP_KEY(),JSON.stringify(AGENT_MAP))}
-function saveLogs(){localStorage.setItem(_LOG_KEY(),JSON.stringify(UPDATE_LOGS))}
+/* Async load from IndexedDB — fills in anything missing from localStorage */
+async function loadFromDB(){if(!CURRENT_USER)return;const uid=CURRENT_USER.id;const keys=[{type:'agt_tracker_v6_daily',lsKey:_STORAGE_KEY()},{type:'agt_tracker_agents',lsKey:_AGENTS_KEY()},{type:'agt_tracker_agent_map',lsKey:_AGENT_MAP_KEY()},{type:'agt_tracker_update_logs',lsKey:_LOG_KEY()},{type:'agt_tracker_api_config',lsKey:_API_KEY()},{type:'agt_tracker_api_tokens',lsKey:_API_TOKENS_KEY()}];for(const k of keys){try{const val=await DB.getUserData(uid,k.type);if(val&&!localStorage.getItem(k.lsKey)){localStorage.setItem(k.lsKey,val)}}catch(e){}}load()}
+function saveAgents(){localStorage.setItem(_AGENTS_KEY(),JSON.stringify(AGENTS));localStorage.setItem(_AGENT_MAP_KEY(),JSON.stringify(AGENT_MAP));if(CURRENT_USER){DB.setUserData(CURRENT_USER.id,'agt_tracker_agents',JSON.stringify(AGENTS)).catch(()=>{});DB.setUserData(CURRENT_USER.id,'agt_tracker_agent_map',JSON.stringify(AGENT_MAP)).catch(()=>{})}}
+function saveLogs(){localStorage.setItem(_LOG_KEY(),JSON.stringify(UPDATE_LOGS));if(CURRENT_USER)DB.setUserData(CURRENT_USER.id,'agt_tracker_update_logs',JSON.stringify(UPDATE_LOGS)).catch(()=>{})}
 function saveApiConfig(){
   API_CONFIG.clientId=document.getElementById('apiClientId').value.trim();
   API_CONFIG.clientSecret=document.getElementById('apiClientSecret').value.trim();
@@ -1071,9 +1099,10 @@ function saveApiConfig(){
   API_CONFIG.dc=document.getElementById('apiDC').value;
   API_CONFIG.redirectUri=document.getElementById('apiRedirectUri').value.trim();
   localStorage.setItem(_API_KEY(),JSON.stringify(API_CONFIG));
+  if(CURRENT_USER)DB.setUserData(CURRENT_USER.id,'agt_tracker_api_config',JSON.stringify(API_CONFIG)).catch(()=>{});
   toast(ic('check','icon-sm')+' API config saved!');
 }
-function saveTokens(){localStorage.setItem(_API_TOKENS_KEY(),JSON.stringify(API_TOKENS))}
+function saveTokens(){localStorage.setItem(_API_TOKENS_KEY(),JSON.stringify(API_TOKENS));if(CURRENT_USER)DB.setUserData(CURRENT_USER.id,'agt_tracker_api_tokens',JSON.stringify(API_TOKENS)).catch(()=>{})}
 function getRedirectUri(){if(API_CONFIG.redirectUri)return API_CONFIG.redirectUri;return window.location.origin+window.location.pathname.replace(/\/$/,'')}
 function loadApiConfigUI(){
   document.getElementById('apiClientId').value=API_CONFIG.clientId||'';
